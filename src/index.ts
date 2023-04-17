@@ -9,4 +9,5 @@ export {
   useStringFieldInfo,
   useNumberFieldInfo
 } from "./FieldContext";
+export { isZodTypeEqual } from "./isZodTypeEqual";
 export type { RTFSupportedZodTypes } from "./supportedZodTypes";
