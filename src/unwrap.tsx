@@ -13,6 +13,7 @@ import {
 } from "./createFieldSchema";
 import { RTFSupportedZodTypes } from "./supportedZodTypes";
 import { Decrement } from "./typeUtilities";
+import { parseDescription } from "./getMetaInformationForZodType";
 
 const unwrappable = new Set<z.ZodFirstPartyTypeKind>([
   z.ZodFirstPartyTypeKind.ZodOptional,
@@ -25,6 +26,7 @@ const unwrappable = new Set<z.ZodFirstPartyTypeKind>([
 export type UnwrappedRTFSupportedZodTypes = {
   type: RTFSupportedZodTypes;
   [HIDDEN_ID_PROPERTY]: string | null;
+  description: ReturnType<typeof parseDescription>;
 };
 
 export function unwrap(
@@ -34,11 +36,17 @@ export function unwrap(
   // Not sure if it's super necessary.
   let r = type;
   let unwrappedHiddenId: null | string = null;
+  let description: UnwrappedRTFSupportedZodTypes["description"] = undefined;
+
+  if (r._def.description) {
+    description = parseDescription(r._def.description);
+  }
 
   while (unwrappable.has(r._def.typeName)) {
     if (isSchemaWithHiddenProperties(r)) {
       unwrappedHiddenId = r._def[HIDDEN_ID_PROPERTY];
     }
+
     switch (r._def.typeName) {
       case z.ZodFirstPartyTypeKind.ZodOptional:
         r = r._def.innerType;
@@ -58,6 +66,10 @@ export function unwrap(
         r = r._def.innerType;
         break;
     }
+
+    if (r._def.description && !description) {
+      description = parseDescription(r._def.description);
+    }
   }
 
   let innerHiddenId: null | string = null;
@@ -69,6 +81,7 @@ export function unwrap(
   return {
     type: r,
     [HIDDEN_ID_PROPERTY]: innerHiddenId || unwrappedHiddenId,
+    description,
   };
 }
 

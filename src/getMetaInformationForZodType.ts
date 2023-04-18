@@ -21,28 +21,10 @@ export function getEnumValues(type: RTFSupportedZodTypes) {
   return type._def.values as readonly string[];
 }
 
-function isSchemaWithUnwrapMethod(
-  schema: object
-): schema is { unwrap: () => RTFSupportedZodTypes } {
-  return "unwrap" in schema;
-}
-
-function recursivelyGetDescription(type: RTFSupportedZodTypes) {
-  let t = type;
-  if (t._def.description) return t._def.description;
-  while (isSchemaWithUnwrapMethod(t)) {
-    t = t.unwrap();
-    if (t._def.description) return t._def.description;
-  }
-  return;
-}
-
 export function getMetaInformationForZodType(type: RTFSupportedZodTypes) {
-  // TODO - Maybe figure out how to not call unwrap here? Seems wasteful calling it twice... probably doesn't matter though.
   const unwrapped = unwrap(type);
-  const description = recursivelyGetDescription(type);
   return {
-    description: parseDescription(description),
+    description: unwrapped.description,
     enumValues: getEnumValues(unwrapped.type),
   };
 }
