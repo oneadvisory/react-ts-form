@@ -31,7 +31,7 @@ import {
   UnwrapMapping,
 } from "./typeUtilities";
 import { getMetaInformationForZodType } from "./getMetaInformationForZodType";
-import { UnwrapEffects, unwrapEffects } from "./unwrap";
+import { UnwrapEffects, unwrap, unwrapEffects } from "./unwrap";
 import { RTFBaseZodType, RTFSupportedZodTypes } from "./supportedZodTypes";
 import { FieldContextProvider } from "./FieldContext";
 import { isZodTypeEqual } from "./isZodTypeEqual";
@@ -528,7 +528,12 @@ export function createTsForm<
       props: PropType<Mapping, SchemaType, PropsMapType> | undefined
     ) {
       type SchemaKey = keyof z.infer<UnwrapEffects<SchemaType>>;
-      const _schema = unwrapEffects(schema);
+      const _schema = unwrap(schema).type;
+      if (!isAnyZodObject(_schema)) {
+        throw new Error(
+          `renderFields expects a zod object schema but got ${_schema._def.typeName}`
+        );
+      }
       const shape: Record<string, RTFSupportedZodTypes> = _schema._def.shape();
       return Object.entries(shape).reduce(
         (accum, [key, type]: [SchemaKey, RTFSupportedZodTypes]) => {
