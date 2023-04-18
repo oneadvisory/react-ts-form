@@ -31,7 +31,7 @@ import {
   UnwrapMapping,
 } from "./typeUtilities";
 import { getMetaInformationForZodType } from "./getMetaInformationForZodType";
-import { unwrapEffects } from "./unwrap";
+import { UnwrapEffects, unwrapEffects } from "./unwrap";
 import { RTFBaseZodType, RTFSupportedZodTypes } from "./supportedZodTypes";
 import { FieldContextProvider } from "./FieldContext";
 import { isZodTypeEqual } from "./isZodTypeEqual";
@@ -97,19 +97,6 @@ export type ExtraProps = {
    */
   afterElement?: ReactNode;
 };
-
-/**
- * @internal
- */
-export type UnwrapEffects<
-  T extends RTFSupportedZodTypes | ZodEffects<any, any>
-> = T extends AnyZodObject
-  ? T
-  : T extends ZodEffects<infer EffectsSchema, any>
-  ? EffectsSchema extends ZodEffects<infer EffectsSchemaInner, any>
-    ? EffectsSchemaInner
-    : EffectsSchema
-  : never;
 
 function checkForDuplicateTypes(array: RTFSupportedZodTypes[]) {
   var combinations = array.flatMap((v, i) =>
@@ -407,6 +394,7 @@ export function createTsForm<
   const propsMap = propsMapToObect(
     options?.propsMap ? options.propsMap : defaultPropsMap
   );
+
   return function Component<SchemaType extends RTFFormSchemaType>({
     schema,
     onSubmit,
@@ -451,17 +439,18 @@ export function createTsForm<
       NestedSchemaType extends RTFSupportedZodTypes | ZodEffects<any, any>,
       K extends keyof z.infer<UnwrapEffects<SchemaType>>
     >(
-      _type: NestedSchemaType,
+      type: NestedSchemaType,
       props: PropType<Mapping, NestedSchemaType, PropsMapType> | undefined,
       key: K,
       prefixedKey: string,
       currentValue: any
     ): RenderedElement {
-      const type = unwrapEffects(_type);
       const Component = getComponentForZodType(type, componentMap);
       if (!Component) {
-        if (isAnyZodObject(type)) {
-          const shape: Record<string, RTFSupportedZodTypes> = type._def.shape();
+        const unwrapped = unwrapEffects(type);
+        if (isAnyZodObject(unwrapped)) {
+          const shape: Record<string, RTFSupportedZodTypes> =
+            unwrapped._def.shape();
           return Object.entries(shape).reduce((accum, [subKey, subType]) => {
             accum[subKey] = renderComponentForSchemaDeep(
               subType,
@@ -473,11 +462,11 @@ export function createTsForm<
             return accum;
           }, {} as RenderedObjectElements);
         }
-        if (isZodArray(type)) {
+        if (isZodArray(unwrapped)) {
           return ((currentValue as Array<any> | undefined | null) ?? []).map(
             (item, index) => {
               return renderComponentForSchemaDeep(
-                type.element,
+                unwrapped.element,
                 props,
                 key,
                 `${prefixedKey}[${index}]`,
@@ -487,7 +476,7 @@ export function createTsForm<
           );
         }
         throw new Error(
-          noMatchingSchemaErrorMessage(key.toString(), type._def.typeName)
+          noMatchingSchemaErrorMessage(key.toString(), unwrapped._def.typeName)
         );
       }
       const meta = getMetaInformationForZodType(type);
