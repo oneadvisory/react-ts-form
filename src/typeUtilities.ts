@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { FormComponentMapping } from "./createSchemaForm";
-import { RTFBaseZodType, RTFSupportedZodTypes } from "./supportedZodTypes";
-import { UnwrapZodType } from "./unwrap";
+import { RTFBaseZodType } from "./supportedZodTypes";
+import { UnwrapEffects, UnwrapZodType } from "./unwrap";
 
 /**
  * @internal
@@ -40,6 +40,33 @@ export type Require<T, K extends keyof T> = T & { [P in K]-?: T[P] };
 /**
  * @internal
  */
+export type Decrement<T extends number> = T extends T
+  ? 0 extends T
+    ? 0
+    : T extends 1
+    ? 0
+    : T extends 2
+    ? 1
+    : T extends 3
+    ? 2
+    : T extends 4
+    ? 3
+    : T extends 5
+    ? 4
+    : T extends 6
+    ? 5
+    : T extends 7
+    ? 6
+    : T extends 8
+    ? 7
+    : T extends 9
+    ? 8
+    : 9
+  : never;
+
+/**
+ * @internal
+ */
 export type RequireKeysWithRequiredChildren<T extends Record<string, any>> = T &
   Require<T, KeysWithRequiredKeyList<T>>;
 
@@ -69,27 +96,25 @@ export type Indexes<V extends readonly any[]> = {
 /**
  * @internal
  */
-export type UnwrapZodBrand<T extends RTFBaseZodType> = T extends z.ZodBranded<
-  z.ZodTypeAny,
-  infer ID
->
-  ? ID
-  : T;
+export type UnwrapZodBrand<T extends RTFBaseZodType> =
+  UnwrapEffects<T> extends z.ZodBranded<z.ZodTypeAny, infer ID> ? ID : T;
 
 /**
  * @internal
  */
 export type UnwrapMapping<T extends FormComponentMapping> = {
   [Index in keyof T]: T[Index] extends readonly [any, any]
-    ? readonly [UnwrapZodBrand<T[Index][0]>, any]
+    ? readonly [UnwrapZodBrand<UnwrapEffects<T[Index][0]>>, any]
     : never;
 };
 
 /**
  * @internal
  */
-export type IndexOfUnwrapZodType<T extends RTFSupportedZodTypes> =
-  T extends z.ZodBranded<z.ZodTypeAny, infer ID> ? ID : UnwrapZodType<T>;
+export type IndexOfUnwrapZodType<T extends RTFBaseZodType> =
+  UnwrapEffects<T> extends z.ZodBranded<z.ZodTypeAny, infer ID>
+    ? ID
+    : UnwrapZodType<T>;
 
 /**
  * @internal

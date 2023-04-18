@@ -1,6 +1,7 @@
 import {
   z,
   ZodArray,
+  ZodEffects,
   ZodEnum,
   ZodFirstPartyTypeKind,
   ZodNullable,
@@ -11,6 +12,7 @@ import {
   isSchemaWithHiddenProperties,
 } from "./createFieldSchema";
 import { RTFSupportedZodTypes } from "./supportedZodTypes";
+import { Decrement } from "./typeUtilities";
 
 const unwrappable = new Set<z.ZodFirstPartyTypeKind>([
   z.ZodFirstPartyTypeKind.ZodOptional,
@@ -78,23 +80,33 @@ export function unwrapEffects(effects: RTFSupportedZodTypes) {
 }
 
 /**
- * I'd like this to be recursive but it creates an "infinite instantiation error" if I make it call itself.
- * This is probably just as good for normal usage?
+ * Recursion with a depth limit to avoid infinite instantiation error.
  */
-export type UnwrapZodType<T extends RTFSupportedZodTypes> =
-  T extends ZodOptional<any>
-    ? GenericizeLeafTypes<T["_def"]["innerType"]>
-    : T extends ZodNullable<any>
-    ? T["_def"]["innerType"] extends ZodOptional<any>
-      ? GenericizeLeafTypes<T["_def"]["innerType"]["_def"]["innerType"]>
-      : GenericizeLeafTypes<T["_def"]["innerType"]>
-    : GenericizeLeafTypes<T>;
+export type UnwrapZodType<
+  T extends RTFSupportedZodTypes,
+  D extends number = 10
+> = [D] extends [0]
+  ? never
+  : T extends ZodOptional<any> | ZodNullable<any>
+  ? GenericizeLeafTypes<UnwrapZodType<T["_def"]["innerType"], Decrement<D>>>
+  : T extends ZodEffects<infer EffectSchema>
+  ? GenericizeLeafTypes<UnwrapZodType<EffectSchema, Decrement<D>>>
+  : GenericizeLeafTypes<T>;
 
 export type GenericizeLeafTypes<T extends RTFSupportedZodTypes> =
   ArrayAsLengthAgnostic<EnumAsAnyEnum<T>>;
 
 export type ArrayAsLengthAgnostic<T extends RTFSupportedZodTypes> =
   T extends ZodArray<any, any> ? ZodArray<T["element"]> : T;
+
+/**
+ * @internal
+ */
+export type UnwrapEffects<
+  T extends RTFSupportedZodTypes | ZodEffects<any, any>
+> = T extends ZodEffects<infer EffectsSchema, any>
+  ? UnwrapEffects<EffectsSchema>
+  : T;
 
 export type EnumAsAnyEnum<T extends RTFSupportedZodTypes> =
   T extends ZodEnum<any> ? ZodEnum<any> : T;
