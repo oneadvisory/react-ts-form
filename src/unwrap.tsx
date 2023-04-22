@@ -4,6 +4,7 @@ import {
   ZodEffects,
   ZodEnum,
   ZodFirstPartyTypeKind,
+  ZodNativeEnum,
   ZodNullable,
   ZodOptional,
 } from "zod";
@@ -122,4 +123,8 @@ export type UnwrapEffects<
   : T;
 
 export type EnumAsAnyEnum<T extends RTFSupportedZodTypes> =
-  T extends ZodEnum<any> ? ZodEnum<any> : T;
+  T extends ZodEnum<any>
+    ? ZodEnum<any>
+    : T extends ZodNativeEnum<any>
+    ? ZodNativeEnum<any>
+    : T;

@@ -28,7 +28,7 @@ export const FieldContext = createContext<null | {
   name: string;
   label?: string;
   placeholder?: string;
-  enumValues?: string[];
+  enumValues?: (string | number)[];
   zodType: RTFSupportedZodTypes;
   addToCoerceUndefined: (v: string) => void;
   removeFromCoerceUndefined: (v: string) => void;

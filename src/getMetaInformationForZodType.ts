@@ -17,8 +17,13 @@ export function parseDescription(description?: string) {
 }
 
 export function getEnumValues(type: RTFSupportedZodTypes) {
-  if (!(type._def.typeName === z.ZodFirstPartyTypeKind.ZodEnum)) return;
-  return type._def.values as readonly string[];
+  if (type._def.typeName === z.ZodFirstPartyTypeKind.ZodEnum) {
+    return type._def.values as readonly string[];
+  }
+  if (type._def.typeName === z.ZodFirstPartyTypeKind.ZodNativeEnum) {
+    return Object.values(type._def.values) as readonly (string | number)[];
+  }
+  return;
 }
 
 export function getMetaInformationForZodType(type: RTFSupportedZodTypes) {
