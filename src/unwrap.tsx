@@ -120,6 +120,8 @@ export type UnwrapEffects<
   T extends RTFSupportedZodTypes | ZodEffects<any, any>
 > = T extends ZodEffects<infer EffectsSchema, any>
   ? UnwrapEffects<EffectsSchema>
+  : T extends ZodOptional<infer OptionalSchema>
+  ? UnwrapEffects<OptionalSchema>
   : T;
 
 export type EnumAsAnyEnum<T extends RTFSupportedZodTypes> =
