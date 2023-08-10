@@ -1,13 +1,11 @@
 import React from "react";
 import { z } from "zod";
+import { createTsForm, duplicateIdErrorMessage } from "../createSchemaForm";
 import {
   addHiddenProperties,
   createUniqueFieldSchema,
-  duplicateIdErrorMessage,
-  HIDDEN_ID_PROPERTY,
-  isSchemaWithHiddenProperties,
-} from "../createFieldSchema";
-import { createTsForm } from "../createSchemaForm";
+  getSchemaId,
+} from "../zod/createFieldSchema";
 import { TextField } from "./utils/testForm";
 
 describe("createFieldSchema", () => {
@@ -70,11 +68,8 @@ describe("addHiddenProperties", () => {
     const id = "a fake id";
     const schema = z.object({ id: z.string() });
     const withHiddenProperties = addHiddenProperties(schema, {
-      [HIDDEN_ID_PROPERTY]: id,
+      _rtf_id: id,
     });
-    expect(
-      isSchemaWithHiddenProperties(withHiddenProperties) &&
-        withHiddenProperties._def[HIDDEN_ID_PROPERTY] === id
-    ).toStrictEqual(true);
+    expect(getSchemaId(withHiddenProperties) === id).toStrictEqual(true);
   });
 });

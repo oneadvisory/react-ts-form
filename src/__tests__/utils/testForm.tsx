@@ -1,7 +1,7 @@
 import React from "react";
 import { Control, useController } from "react-hook-form";
 import { z } from "zod";
-import { createUniqueFieldSchema } from "../../createFieldSchema";
+import { createUniqueFieldSchema } from "../../zod/createFieldSchema";
 import { createTsForm } from "../../createSchemaForm";
 
 export const textFieldTestId = "text-field";

@@ -22,25 +22,26 @@ import {
   ZodEffects,
   ZodFirstPartyTypeKind,
 } from "zod";
-import { getComponentForZodType } from "./getComponentForZodType";
+import {
+  getComponentForZodType,
+  getMetaInformationForZodType,
+  isZodTypeEqual,
+  RTFBaseZodType,
+  RTFSupportedZodTypes,
+  unwrapEffects,
+  UnwrapEffects,
+} from "./zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   IndexOf,
-  IndexOfUnwrapZodType,
   RequireKeysWithRequiredChildren,
   UnwrapMapping,
 } from "./typeUtilities";
-import { getMetaInformationForZodType } from "./getMetaInformationForZodType";
-import { UnwrapEffects, unwrap, unwrapEffects } from "./unwrap";
-import { RTFBaseZodType, RTFSupportedZodTypes } from "./supportedZodTypes";
 import { FieldContextProvider } from "./FieldContext";
-import { isZodTypeEqual } from "./isZodTypeEqual";
 import { duplicateTypeError, printWarningsForSchema } from "./logging";
-import {
-  duplicateIdErrorMessage,
-  HIDDEN_ID_PROPERTY,
-  isSchemaWithHiddenProperties,
-} from "./createFieldSchema";
+import { getSchemaId } from "./zod/createFieldSchema";
+import { extractFieldData } from "./zod/fieldData";
+import { IndexOfUnwrapZodType } from "./unwrap";
 
 /**
  * @internal
@@ -114,12 +115,17 @@ function checkForDuplicateTypes(array: RTFSupportedZodTypes[]) {
 function checkForDuplicateUniqueFields(array: RTFSupportedZodTypes[]) {
   let usedIdsSet = new Set<string>();
   for (const type of array) {
-    if (isSchemaWithHiddenProperties(type)) {
-      if (usedIdsSet.has(type._def[HIDDEN_ID_PROPERTY]))
-        throw new Error(duplicateIdErrorMessage(type._def[HIDDEN_ID_PROPERTY]));
-      usedIdsSet.add(type._def[HIDDEN_ID_PROPERTY]);
+    const schemaId = getSchemaId(type);
+    if (schemaId) {
+      if (usedIdsSet.has(schemaId))
+        throw new Error(duplicateIdErrorMessage(schemaId));
+      usedIdsSet.add(schemaId);
     }
   }
+}
+
+export function duplicateIdErrorMessage(id: string) {
+  return `Duplicate id passed to createFieldSchema: ${id}. Ensure that each id is only being used once and that createFieldSchema is only called at the top level.`;
 }
 
 const defaultPropsMap = [
@@ -528,7 +534,7 @@ export function createTsForm<
       props: PropType<Mapping, SchemaType, PropsMapType> | undefined
     ) {
       type SchemaKey = keyof z.infer<UnwrapEffects<SchemaType>>;
-      const _schema = unwrap(schema).type;
+      const _schema = extractFieldData(schema).type;
       if (!isAnyZodObject(_schema)) {
         throw new Error(
           `renderFields expects a zod object schema but got ${_schema._def.typeName}`

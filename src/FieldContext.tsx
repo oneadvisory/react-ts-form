@@ -7,21 +7,22 @@ import {
   UseControllerReturn,
 } from "react-hook-form";
 import { errorFromRhfErrorObject } from "./zodObjectErrors";
-import { RTFSupportedZodTypes } from "./supportedZodTypes";
-import { UnwrapZodType, unwrap } from "./unwrap";
 import {
-  RTFSupportedZodFirstPartyTypeKind,
-  RTFSupportedZodFirstPartyTypeKindMap,
   isTypeOf,
   isZodArray,
   isZodDefaultDef,
-} from "./isZodTypeEqual";
+  RTFSupportedZodFirstPartyTypeKind,
+  RTFSupportedZodFirstPartyTypeKindMap,
+  RTFSupportedZodTypes,
+} from "./zod";
 
 import {
   PickPrimitiveObjectProperties,
   pickPrimitiveObjectProperties,
 } from "./utilities";
 import { ZodDefaultDef } from "zod";
+import { UnwrapZodType } from "./unwrap";
+import { extractFieldData } from "./zod/fieldData";
 
 export const FieldContext = createContext<null | {
   control: Control<any>;
@@ -266,7 +267,7 @@ function getFieldInfo<
   TZodType extends RTFSupportedZodTypes,
   TUnwrapZodType extends UnwrapZodType<TZodType> = UnwrapZodType<TZodType>
 >(zodType: TZodType) {
-  const { type, _rtf_id } = unwrap(zodType);
+  const { type, uniqueSchemaId } = extractFieldData(zodType);
 
   function getDefaultValue() {
     const def = zodType._def;
@@ -280,7 +281,7 @@ function getFieldInfo<
   return {
     type: type as TUnwrapZodType,
     zodType,
-    uniqueId: _rtf_id ?? undefined,
+    uniqueId: uniqueSchemaId ?? undefined,
     isOptional: zodType.isOptional(),
     isNullable: zodType.isNullable(),
     defaultValue: getDefaultValue(),
@@ -314,7 +315,7 @@ export function useFieldInfo() {
 
 /**
  * The zod type objects contain virtual properties which requires us to
- * manually pick the properties we'd like inorder to get their values.
+ * manually pick the properties we'd like in order to get their values.
  */
 export function usePickZodFields<
   TZodKindName extends RTFSupportedZodFirstPartyTypeKind,

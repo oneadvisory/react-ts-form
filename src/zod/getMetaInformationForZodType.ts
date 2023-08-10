@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { RTFSupportedZodTypes } from "./supportedZodTypes";
-import { unwrap } from "./unwrap";
+import { extractFieldData } from "./fieldData";
 
 export const SPLIT_DESCRIPTION_SYMBOL = " // ";
 
@@ -26,10 +26,13 @@ export function getEnumValues(type: RTFSupportedZodTypes) {
   return;
 }
 
-export function getMetaInformationForZodType(type: RTFSupportedZodTypes) {
-  const unwrapped = unwrap(type);
+export function getMetaInformationForZodType<
+  M extends Record<string, any> = Record<string, any>
+>(type: RTFSupportedZodTypes) {
+  const unwrapped = extractFieldData<M>(type);
   return {
     description: unwrapped.description,
     enumValues: getEnumValues(unwrapped.type),
+    metadata: unwrapped.metadata,
   };
 }

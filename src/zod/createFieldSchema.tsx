@@ -1,5 +1,5 @@
 import { z, ZodBranded } from "zod";
-import { RTFSupportedZodTypes } from "./supportedZodTypes";
+import { RTFSupportedZodTypes } from ".";
 
 export const HIDDEN_ID_PROPERTY = "_rtf_id";
 
@@ -17,10 +17,12 @@ export type SchemaWithHiddenProperties<T extends RTFSupportedZodTypes> = T & {
   _def: T["_def"] & HiddenProperties;
 };
 
-export function isSchemaWithHiddenProperties<T extends RTFSupportedZodTypes>(
+export function getSchemaId<T extends RTFSupportedZodTypes>(
   schemaType: T
-): schemaType is SchemaWithHiddenProperties<T> {
-  return HIDDEN_ID_PROPERTY in schemaType._def;
+): string | undefined {
+  return HIDDEN_ID_PROPERTY in schemaType._def
+    ? (schemaType._def[HIDDEN_ID_PROPERTY] as string)
+    : undefined;
 }
 
 export function addHiddenProperties<
@@ -32,11 +34,6 @@ export function addHiddenProperties<
   }
   return schema as ZodBranded<T, ID>;
 }
-
-export function duplicateIdErrorMessage(id: string) {
-  return `Duplicate id passed to createFieldSchema: ${id}. Ensure that each id is only being used once and that createFieldSchema is only called at the top level.`;
-}
-
 /**
  * Creates a schema that will map to a unique component. This can be used when you want multiple of the same zod type to map to different React Components
  * @example

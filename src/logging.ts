@@ -1,4 +1,4 @@
-import { RTFSupportedZodTypes } from "./supportedZodTypes";
+import { RTFSupportedZodTypes } from "./zod";
 
 const shownWarnings = {
   enum: false,

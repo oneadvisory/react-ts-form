@@ -10,7 +10,7 @@ import {
   z,
 } from "zod";
 import { RTFSupportedZodTypes } from "./supportedZodTypes";
-import { unwrap } from "./unwrap";
+import { extractFieldData } from "./fieldData";
 
 export function isZodTypeEqual(
   _a: RTFSupportedZodTypes,
@@ -20,8 +20,8 @@ export function isZodTypeEqual(
   // if typeNames are equal Unwrap Appropriate Types:
   // optional
 
-  let { type: a, _rtf_id: idA } = unwrap(_a);
-  let { type: b, _rtf_id: idB } = unwrap(_b);
+  let { type: a, uniqueSchemaId: idA } = extractFieldData(_a);
+  let { type: b, uniqueSchemaId: idB } = extractFieldData(_b);
 
   if (idA || idB) {
     return idA === idB;

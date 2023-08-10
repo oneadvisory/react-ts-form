@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { createUniqueFieldSchema } from "../createFieldSchema";
-import { isZodTypeEqual } from "../isZodTypeEqual";
-import { RTFSupportedZodTypes } from "../supportedZodTypes";
+import { createUniqueFieldSchema } from "../zod/createFieldSchema";
+import { isZodTypeEqual } from "../zod/isZodTypeEqual";
+import { RTFSupportedZodTypes } from "../zod/supportedZodTypes";
 import { combinations } from "./utils/combinations";
 
 const parameterlessTypes = [

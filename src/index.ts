@@ -1,4 +1,5 @@
-export { createUniqueFieldSchema } from "./createFieldSchema";
+export { createUniqueFieldSchema } from "./zod/createFieldSchema";
+export { addSchemaMetadata } from "./zod/schemaMetadata";
 export { createTsForm } from "./createSchemaForm";
 export {
   useDescription,
@@ -7,7 +8,6 @@ export {
   useTsController,
   useFieldInfo,
   useStringFieldInfo,
-  useNumberFieldInfo
+  useNumberFieldInfo,
 } from "./FieldContext";
-export { isZodTypeEqual } from "./isZodTypeEqual";
-export type { RTFSupportedZodTypes } from "./supportedZodTypes";
+export * from "./zod";

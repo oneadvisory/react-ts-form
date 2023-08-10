@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
   getMetaInformationForZodType,
   SPLIT_DESCRIPTION_SYMBOL,
-} from "../getMetaInformationForZodType";
+} from "../zod/getMetaInformationForZodType";
 
 describe("getMetaInformationForZodType", () => {
   it("should get the description label if provided", () => {

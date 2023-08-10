@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { FormComponentMapping } from "./createSchemaForm";
-import { RTFBaseZodType } from "./supportedZodTypes";
-import { UnwrapEffects, UnwrapZodType } from "./unwrap";
+import { RTFBaseZodType, UnwrapEffects } from "./zod";
 
 /**
  * @internal
@@ -107,14 +106,6 @@ export type UnwrapMapping<T extends FormComponentMapping> = {
     ? readonly [UnwrapZodBrand<UnwrapEffects<T[Index][0]>>, any]
     : never;
 };
-
-/**
- * @internal
- */
-export type IndexOfUnwrapZodType<T extends RTFBaseZodType> =
-  UnwrapEffects<T> extends z.ZodBranded<z.ZodTypeAny, infer ID>
-    ? ID
-    : UnwrapZodType<T>;
 
 /**
  * @internal
