@@ -30,6 +30,7 @@ import {
   RTFSupportedZodTypes,
   unwrapEffects,
   UnwrapEffects,
+  UnwrapEffectsValue,
 } from "./zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -251,7 +252,7 @@ export type RTFFormProps<
   /**
    * Initializes your form with default values. Is a deep partial, so all properties and nested properties are optional.
    */
-  defaultValues?: DeepPartial<z.infer<UnwrapEffects<SchemaType>>>;
+  defaultValues?: DeepPartial<z.infer<UnwrapEffectsValue<SchemaType>>>;
   /**
    * A function that renders components after the form, the function is passed a `submit` function that can be used to trigger
    * form submission.

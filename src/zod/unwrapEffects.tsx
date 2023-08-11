@@ -1,4 +1,5 @@
 import {
+  ZodBranded,
   ZodEffects,
   ZodFirstPartyTypeKind,
   ZodNullable,
@@ -15,6 +16,18 @@ export type UnwrapEffects<
   ? UnwrapEffects<OptionalSchema>
   : T extends ZodNullable<infer NullableSchema>
   ? UnwrapEffects<NullableSchema>
+  : T;
+
+export type UnwrapEffectsValue<
+  T extends RTFSupportedZodTypes | ZodEffects<any, any, any>
+> = T extends ZodEffects<any, any, infer EffectsOutput>
+  ? EffectsOutput
+  : T extends ZodBranded<infer BrandedSchema, any>
+  ? UnwrapEffectsValue<BrandedSchema>
+  : T extends ZodOptional<infer OptionalSchema>
+  ? UnwrapEffectsValue<OptionalSchema>
+  : T extends ZodNullable<infer NullableSchema>
+  ? UnwrapEffectsValue<NullableSchema>
   : T;
 
 export type MultipleEffects<T extends ZodTypeAny> =
