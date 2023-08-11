@@ -1,10 +1,9 @@
-import { RTFSupportedZodTypes } from "./supportedZodTypes";
-import { FormComponentMapping } from "../createSchemaForm";
+import { RTFBaseZodType, RTFSupportedZodTypes } from "./supportedZodTypes";
 import { isZodTypeEqual } from "./isZodTypeEqual";
 
-export function getComponentForZodType(
+export function getComponentForZodType<T>(
   zodType: RTFSupportedZodTypes,
-  mapping: FormComponentMapping
+  mapping: readonly (readonly [RTFBaseZodType, T])[]
 ) {
   for (const mappingElement of mapping) {
     if (isZodTypeEqual(zodType, mappingElement[0])) return mappingElement[1];

@@ -1,6 +1,9 @@
-import { z } from "zod";
+import { ZodFirstPartySchemaTypes, z } from "zod";
 import { parseDescription } from "./getMetaInformationForZodType";
-import { RTFSupportedZodTypes } from "./supportedZodTypes";
+import {
+  RTFSupportedZodTypes,
+  isRTFSupportedZodType,
+} from "./supportedZodTypes";
 import { getSchemaId } from "./createFieldSchema";
 import { getSchemaMetadata } from "./schemaMetadata";
 
@@ -23,7 +26,13 @@ const unwrappable = new Set<z.ZodFirstPartyTypeKind>([
 
 export function extractFieldData<
   M extends Record<string, any> = Record<string, any>
->(type: RTFSupportedZodTypes): UnwrappedRTFSupportedZodTypes<M> {
+>(type: ZodFirstPartySchemaTypes): UnwrappedRTFSupportedZodTypes<M> {
+  if (!isRTFSupportedZodType(type)) {
+    throw new Error(
+      `Unsupported zod type: ${type._def.typeName}. Please open an issue if you think this should be supported.`
+    );
+  }
+
   // Realized zod has a built in "unwrap()" function after writing this.
   // Not sure if it's super necessary.
   let r = type;

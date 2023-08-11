@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { ZodFirstPartySchemaTypes, z } from "zod";
 import { RTFSupportedZodTypes } from "./supportedZodTypes";
 import { extractFieldData } from "./fieldData";
 
@@ -28,7 +28,7 @@ export function getEnumValues(type: RTFSupportedZodTypes) {
 
 export function getMetaInformationForZodType<
   M extends Record<string, any> = Record<string, any>
->(type: RTFSupportedZodTypes) {
+>(type: ZodFirstPartySchemaTypes) {
   const unwrapped = extractFieldData<M>(type);
   return {
     description: unwrapped.description,

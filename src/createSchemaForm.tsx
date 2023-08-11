@@ -169,6 +169,7 @@ export type GetTupleFromMapping<
 
 export type Prev = [never, 0, 1, 2, 3];
 export type MaxDefaultRecursionDepth = 1;
+
 export type PropType<
   Mapping extends FormComponentMapping,
   SchemaType extends RTFSupportedZodTypes | ZodEffects<any, any>,
@@ -199,18 +200,19 @@ export type PropType<
                 Prev[Level]
               >
             : never
-          : GetTupleFromMapping<Mapping, SchemaType, key> extends readonly [
-              any,
-              any
-            ] // I guess this tells typescript it has a second element? errors without this check.
-          ? Omit<
-              ComponentProps<GetTupleFromMapping<Mapping, SchemaType, key>[1]>,
-              PropsMapType[number][1]
-            > &
-              ExtraProps
-          : never;
+          : MappedComponentProps<
+              GetTupleFromMapping<Mapping, SchemaType, key>,
+              PropsMapType
+            >;
       }>
     >;
+
+type MappedComponentProps<
+  T,
+  PropsMapType extends PropsMapping
+> = T extends readonly [any, any]
+  ? Omit<ComponentProps<T[1]>, PropsMapType[number][1]> & ExtraProps
+  : never;
 
 export type RenderedFieldMap<
   SchemaType extends AnyZodObject | ZodEffects<any, any>,

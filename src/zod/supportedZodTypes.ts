@@ -16,6 +16,8 @@ import {
   ZodTuple,
   ZodEffects,
   ZodNativeEnum,
+  ZodFirstPartySchemaTypes,
+  ZodFirstPartyTypeKind,
 } from "zod";
 
 /**
@@ -42,3 +44,36 @@ export type RTFSupportedZodTypes =
   | RTFBaseZodType
   | ZodOptional<any>
   | ZodNullable<any>;
+
+export function isRTFSupportedZodType(
+  type: ZodFirstPartySchemaTypes
+): type is RTFSupportedZodTypes {
+  const typeName = type._def.typeName;
+  switch (typeName) {
+    case ZodFirstPartyTypeKind.ZodNaN:
+    case ZodFirstPartyTypeKind.ZodBigInt:
+    case ZodFirstPartyTypeKind.ZodUndefined:
+    case ZodFirstPartyTypeKind.ZodNull:
+    case ZodFirstPartyTypeKind.ZodAny:
+    case ZodFirstPartyTypeKind.ZodUnknown:
+    case ZodFirstPartyTypeKind.ZodNever:
+    case ZodFirstPartyTypeKind.ZodVoid:
+    case ZodFirstPartyTypeKind.ZodUnion:
+    case ZodFirstPartyTypeKind.ZodIntersection:
+    case ZodFirstPartyTypeKind.ZodFunction:
+    case ZodFirstPartyTypeKind.ZodLazy:
+    case ZodFirstPartyTypeKind.ZodLiteral:
+    case ZodFirstPartyTypeKind.ZodDefault:
+    case ZodFirstPartyTypeKind.ZodCatch:
+    case ZodFirstPartyTypeKind.ZodPromise:
+    case ZodFirstPartyTypeKind.ZodPipeline:
+      // Intentional fallthrough
+      return false;
+  }
+
+  // Typescript assertion that we have covered all cases
+  const typeAssert: RTFSupportedZodTypes["_def"]["typeName"] = typeName;
+  typeAssert;
+
+  return true;
+}
