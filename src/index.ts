@@ -1,6 +1,6 @@
 export { createUniqueFieldSchema } from "./zod/createFieldSchema";
 export { addSchemaMetadata } from "./zod/schemaMetadata";
-export { createTsForm } from "./createSchemaForm";
+export { RTFFormSchemaType, createTsForm } from "./createSchemaForm";
 export {
   useDescription,
   useReqDescription,
