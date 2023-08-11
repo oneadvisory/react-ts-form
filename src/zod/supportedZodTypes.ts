@@ -18,6 +18,7 @@ import {
   ZodNativeEnum,
   ZodFirstPartySchemaTypes,
   ZodFirstPartyTypeKind,
+  ZodDefault,
 } from "zod";
 
 /**
@@ -37,6 +38,7 @@ export type RTFBaseZodType =
   | ZodSet<any>
   | ZodEnum<any>
   | ZodNativeEnum<any>
+  | ZodDefault<any>
   | ZodBranded<any, any>
   | ZodEffects<any, any>;
 
@@ -63,7 +65,6 @@ export function isRTFSupportedZodType(
     case ZodFirstPartyTypeKind.ZodFunction:
     case ZodFirstPartyTypeKind.ZodLazy:
     case ZodFirstPartyTypeKind.ZodLiteral:
-    case ZodFirstPartyTypeKind.ZodDefault:
     case ZodFirstPartyTypeKind.ZodCatch:
     case ZodFirstPartyTypeKind.ZodPromise:
     case ZodFirstPartyTypeKind.ZodPipeline:
