@@ -1,4 +1,6 @@
+import { zodResolver } from "@hookform/resolvers/zod";
 import React, {
+  ComponentProps,
   ForwardRefExoticComponent,
   Fragment,
   FunctionComponent,
@@ -7,42 +9,41 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { ComponentProps } from "react";
 import {
   DeepPartial,
   ErrorOption,
   FormProvider,
-  useForm,
   UseFormReturn,
+  useForm,
 } from "react-hook-form";
 import {
   AnyZodObject,
-  z,
   ZodArray,
   ZodEffects,
   ZodFirstPartyTypeKind,
+  z,
 } from "zod";
-import {
-  getComponentForZodType,
-  getMetaInformationForZodType,
-  isZodTypeEqual,
-  RTFBaseZodType,
-  RTFSupportedZodTypes,
-  unwrapEffects,
-  UnwrapEffects,
-  UnwrapEffectsValue,
-} from "./zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { FieldContextProvider } from "./FieldContext";
+import { duplicateTypeError, printWarningsForSchema } from "./logging";
 import {
   IndexOf,
   RequireKeysWithRequiredChildren,
   UnwrapMapping,
 } from "./typeUtilities";
-import { FieldContextProvider } from "./FieldContext";
-import { duplicateTypeError, printWarningsForSchema } from "./logging";
+import { IndexOfUnwrapZodType } from "./unwrap";
+import {
+  RTFBaseZodType,
+  RTFSupportedZodTypes,
+  UnwrapEffects,
+  UnwrapEffectsMetadata,
+  UnwrapEffectsValue,
+  getComponentForZodType,
+  getMetaInformationForZodType,
+  isZodTypeEqual,
+  unwrapEffects,
+} from "./zod";
 import { getSchemaId } from "./zod/createFieldSchema";
 import { extractFieldData } from "./zod/fieldData";
-import { IndexOfUnwrapZodType } from "./unwrap";
 
 /**
  * @internal
@@ -89,7 +90,7 @@ export function useFormResultValueChangedErrorMesssage() {
  */
 export type FormComponent = "form" | ((props: any) => JSX.Element);
 
-export type ExtraProps = {
+export interface ExtraProps {
   /**
    * An element to render before the field.
    */
@@ -98,7 +99,7 @@ export type ExtraProps = {
    * An element to render after the field.
    */
   afterElement?: ReactNode;
-};
+}
 
 function checkForDuplicateTypes(array: RTFSupportedZodTypes[]) {
   var combinations = array.flatMap((v, i) =>
@@ -147,13 +148,13 @@ export type RTFFormSchemaType = z.AnyZodObject | ZodEffects<any, any>;
 export type RTFFormSubmitFn<SchemaType extends RTFFormSchemaType> = (
   values: z.infer<SchemaType>
 ) => void | Promise<void>;
-export type SchemaShape<
-  SchemaType extends RTFSupportedZodTypes | ZodEffects<any, any>
-> = ReturnType<UnwrapEffects<SchemaType>["_def"]["shape"]>;
+export type SchemaShape<SchemaType extends RTFSupportedZodTypes> = ReturnType<
+  UnwrapEffects<SchemaType>["_def"]["shape"]
+>;
 
 export type IndexOfSchemaInMapping<
   Mapping extends FormComponentMapping,
-  SchemaType extends RTFSupportedZodTypes | ZodEffects<any, any>,
+  SchemaType extends RTFSupportedZodTypes,
   key extends keyof z.infer<UnwrapEffects<SchemaType>>
 > = IndexOf<
   UnwrapMapping<Mapping>,
@@ -162,18 +163,24 @@ export type IndexOfSchemaInMapping<
 
 export type GetTupleFromMapping<
   Mapping extends FormComponentMapping,
-  SchemaType extends RTFSupportedZodTypes | ZodEffects<any, any>,
+  SchemaType extends RTFSupportedZodTypes,
   key extends keyof z.infer<UnwrapEffects<SchemaType>>
-> = IndexOfSchemaInMapping<Mapping, SchemaType, key> extends never
-  ? never
-  : Mapping[IndexOfSchemaInMapping<Mapping, SchemaType, key>];
+> = Mapping[IndexOfSchemaInMapping<Mapping, SchemaType, key>] extends readonly [
+  any,
+  any
+]
+  ? readonly [
+      SchemaShape<SchemaType>[key],
+      Mapping[IndexOfSchemaInMapping<Mapping, SchemaType, key>][1]
+    ]
+  : never;
 
 export type Prev = [never, 0, 1, 2, 3];
 export type MaxDefaultRecursionDepth = 1;
 
 export type PropType<
   Mapping extends FormComponentMapping,
-  SchemaType extends RTFSupportedZodTypes | ZodEffects<any, any>,
+  SchemaType extends RTFSupportedZodTypes,
   PropsMapType extends PropsMapping = typeof defaultPropsMap,
   // this controls the depth we allow TS to go into the schema. 2 is enough for most cases, but we could consider exposing this as a generic to allow users to control the depth
   Level extends Prev[number] = MaxDefaultRecursionDepth
@@ -208,11 +215,26 @@ export type PropType<
       }>
     >;
 
+type PrepareProps<
+  T,
+  omit extends string | number | symbol,
+  optional extends string | number | symbol
+> = {
+  [P in Exclude<keyof T, omit | optional>]: T[P];
+} & {
+  [P in optional & keyof T]?: T[P];
+};
+
 type MappedComponentProps<
   T,
   PropsMapType extends PropsMapping
 > = T extends readonly [any, any]
-  ? Omit<ComponentProps<T[1]>, PropsMapType[number][1]> & ExtraProps
+  ? PrepareProps<
+      ComponentProps<T[1]>,
+      PropsMapType[number][1],
+      keyof UnwrapEffectsMetadata<T[0]>
+    > &
+      ExtraProps
   : never;
 
 export type RenderedFieldMap<
@@ -445,7 +467,7 @@ export function createTsForm<
     const submitFn = handleSubmit(submitter.submit);
 
     function renderComponentForSchemaDeep<
-      NestedSchemaType extends RTFSupportedZodTypes | ZodEffects<any, any>,
+      NestedSchemaType extends RTFSupportedZodTypes,
       K extends keyof z.infer<UnwrapEffects<SchemaType>>
     >(
       type: NestedSchemaType,
@@ -508,6 +530,7 @@ export function createTsForm<
         ...(propsMap.descriptionPlaceholder && {
           [propsMap.descriptionPlaceholder]: meta.description?.placeholder,
         }),
+        ...meta.metadata,
         ...fieldProps,
       };
       const ctxLabel = meta.description?.label;
