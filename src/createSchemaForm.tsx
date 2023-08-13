@@ -166,10 +166,12 @@ export type GetTupleFromMapping<
   Mapping extends FormComponentMapping,
   SchemaType extends RTFSupportedZodTypes,
   key extends keyof z.infer<UnwrapEffects<SchemaType>>
-> = Mapping[IndexOfSchemaInMapping<Mapping, SchemaType, key>] extends readonly [
-  any,
-  any
-]
+> = IndexOfSchemaInMapping<Mapping, SchemaType, key> extends never
+  ? never
+  : Mapping[IndexOfSchemaInMapping<Mapping, SchemaType, key>] extends readonly [
+      any,
+      any
+    ]
   ? readonly [
       SchemaShape<SchemaType>[key],
       Mapping[IndexOfSchemaInMapping<Mapping, SchemaType, key>][1]
