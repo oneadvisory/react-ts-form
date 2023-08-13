@@ -27,6 +27,7 @@ import { FieldContextProvider } from "./FieldContext";
 import { duplicateTypeError, printWarningsForSchema } from "./logging";
 import {
   IndexOf,
+  OptionalKeys,
   RequireKeysWithRequiredChildren,
   UnwrapMapping,
 } from "./typeUtilities";
@@ -220,9 +221,9 @@ type PrepareProps<
   omit extends string | number | symbol,
   optional extends string | number | symbol
 > = {
-  [P in Exclude<keyof T, omit | optional>]: T[P];
+  [P in Exclude<keyof T, omit | optional | OptionalKeys<T>>]: T[P];
 } & {
-  [P in optional & keyof T]?: T[P];
+  [P in (optional | OptionalKeys<T>) & keyof T]?: T[P];
 };
 
 type MappedComponentProps<
