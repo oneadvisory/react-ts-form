@@ -26,6 +26,7 @@ import {
 import { FieldContextProvider } from "./FieldContext";
 import { duplicateTypeError, printWarningsForSchema } from "./logging";
 import {
+  FlatType,
   IndexOf,
   OptionalKeys,
   RequireKeysWithRequiredChildren,
@@ -189,34 +190,32 @@ export type PropType<
   Level extends Prev[number] = MaxDefaultRecursionDepth
 > = [Level] extends [never]
   ? never
-  : RequireKeysWithRequiredChildren<
-      Partial<{
-        [key in keyof z.infer<UnwrapEffects<SchemaType>>]: GetTupleFromMapping<
-          Mapping,
-          SchemaType,
-          key
-        > extends never
-          ? UnwrapEffects<SchemaType>["shape"][key] extends z.AnyZodObject
-            ? PropType<
-                Mapping,
-                UnwrapEffects<SchemaType>["shape"][key],
-                PropsMapType,
-                Prev[Level]
-              >
-            : UnwrapEffects<SchemaType>["shape"][key] extends z.ZodArray<any>
-            ? PropType<
-                Mapping,
-                UnwrapEffects<SchemaType>["shape"][key]["element"],
-                PropsMapType,
-                Prev[Level]
-              >
-            : never
-          : MappedComponentProps<
-              GetTupleFromMapping<Mapping, SchemaType, key>,
-              PropsMapType
-            >;
-      }>
-    >;
+  : RequireKeysWithRequiredChildren<{
+      [key in keyof z.infer<UnwrapEffects<SchemaType>>]?: GetTupleFromMapping<
+        Mapping,
+        SchemaType,
+        key
+      > extends never
+        ? UnwrapEffects<SchemaType>["shape"][key] extends z.AnyZodObject
+          ? PropType<
+              Mapping,
+              UnwrapEffects<SchemaType>["shape"][key],
+              PropsMapType,
+              Prev[Level]
+            >
+          : UnwrapEffects<SchemaType>["shape"][key] extends z.ZodArray<any>
+          ? PropType<
+              Mapping,
+              UnwrapEffects<SchemaType>["shape"][key]["element"],
+              PropsMapType,
+              Prev[Level]
+            >
+          : never
+        : MappedComponentProps<
+            GetTupleFromMapping<Mapping, SchemaType, key>,
+            PropsMapType
+          >;
+    }>;
 
 type PrepareProps<
   T,
@@ -232,12 +231,14 @@ type MappedComponentProps<
   T,
   PropsMapType extends PropsMapping
 > = T extends readonly [any, any]
-  ? PrepareProps<
-      ComponentProps<T[1]>,
-      PropsMapType[number][1],
-      keyof UnwrapEffectsMetadata<T[0]>
-    > &
-      ExtraProps
+  ? FlatType<
+      PrepareProps<
+        ComponentProps<T[1]>,
+        PropsMapType[number][1],
+        keyof UnwrapEffectsMetadata<T[0]>
+      > &
+        ExtraProps
+    >
   : never;
 
 export type RenderedFieldMap<

@@ -69,6 +69,8 @@ export type Decrement<T extends number> = T extends T
 export type RequireKeysWithRequiredChildren<T extends Record<string, any>> = T &
   Require<T, KeysWithRequiredKeyList<T>>;
 
+export type FlatType<T> = T extends object ? { [K in keyof T]: T[K] } : T;
+
 /**
  * @internal
  */
