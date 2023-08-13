@@ -333,13 +333,11 @@ export type RTFFormProps<
    * ```
    */
   props?: PropType<Mapping, SchemaType, PropsMapType>;
-}> &
-  RequireKeysWithRequiredChildren<{
-    /**
-     * Props to pass to the form container component (by default the props that "form" tags accept)
-     */
-    formProps?: Omit<ComponentProps<FormType>, "children" | "onSubmit">;
-  }>;
+  /**
+   * Props to pass to the form container component (by default the props that "form" tags accept)
+   */
+  formProps?: Omit<ComponentProps<FormType>, "children" | "onSubmit">;
+}>;
 
 /**
  * Creates a reusable, typesafe form component based on a zod-component mapping.
