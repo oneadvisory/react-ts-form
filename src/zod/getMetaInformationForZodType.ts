@@ -26,10 +26,8 @@ export function getEnumValues(type: RTFSupportedZodTypes) {
   return;
 }
 
-export function getMetaInformationForZodType<
-  M extends Record<string, any> = Record<string, any>
->(type: ZodFirstPartySchemaTypes) {
-  const unwrapped = extractFieldData<M>(type);
+export function getMetaInformationForZodType(type: ZodFirstPartySchemaTypes) {
+  const unwrapped = extractFieldData(type);
   return {
     description: unwrapped.description,
     enumValues: getEnumValues(unwrapped.type),

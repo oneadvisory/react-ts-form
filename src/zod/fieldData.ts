@@ -6,6 +6,7 @@ import {
 } from "./supportedZodTypes";
 import { getSchemaId } from "./createFieldSchema";
 import { getSchemaMetadata } from "./schemaMetadata";
+import { UnwrapEffectsMetadata } from "./unwrapEffects";
 
 export type UnwrappedRTFSupportedZodTypes<
   M extends Record<string, any> = Record<string, any>
@@ -24,9 +25,9 @@ const unwrappable = new Set<z.ZodFirstPartyTypeKind>([
   z.ZodFirstPartyTypeKind.ZodDefault,
 ]);
 
-export function extractFieldData<
-  M extends Record<string, any> = Record<string, any>
->(type: ZodFirstPartySchemaTypes): UnwrappedRTFSupportedZodTypes<M> {
+export function extractFieldData<T extends ZodFirstPartySchemaTypes>(
+  type: T
+): UnwrappedRTFSupportedZodTypes<UnwrapEffectsMetadata<T>> {
   if (!isRTFSupportedZodType(type)) {
     throw new Error(
       `Unsupported zod type: ${type._def.typeName}. Please open an issue if you think this should be supported.`
@@ -38,7 +39,7 @@ export function extractFieldData<
   let r = type;
   let unwrappedHiddenId: null | string = null;
   let description: UnwrappedRTFSupportedZodTypes["description"] = undefined;
-  let metadata = {} as M;
+  let metadata = {} as UnwrapEffectsMetadata<T>;
 
   if (r._def.description) {
     description = parseDescription(r._def.description);

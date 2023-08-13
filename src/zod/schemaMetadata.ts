@@ -1,9 +1,26 @@
-import { ZodEffects, ZodFirstPartyTypeKind, z } from "zod";
+import {
+  ZodEffects,
+  ZodFirstPartyTypeKind,
+  ZodTypeAny,
+  input,
+  output,
+  z,
+} from "zod";
 import { RTFSupportedZodTypes } from ".";
 
 export const METADATA_ID_PROPERTY = "_rtf_metadata";
 
 type MetadataSupportedTypes = RTFSupportedZodTypes | z.ZodEffects<any>;
+
+export class RTFMetaDataEffect<
+  T extends ZodTypeAny | RTFMetaDataEffect<any, any>,
+  P extends Record<string, any> = Record<string, any>,
+  O = output<T>,
+  I = input<T>
+> extends ZodEffects<T, O, I> {
+  _def!: z.ZodEffectsDef<T> & MetadataProperties<P>;
+  readonly RTFMetaDataEffect = true;
+}
 
 export type MetadataProperties<T extends Record<string, any>> = {
   [METADATA_ID_PROPERTY]: T;
@@ -28,7 +45,7 @@ export function getSchemaMetadata<
 export function addSchemaMetadata<
   T extends MetadataSupportedTypes,
   P extends Record<string, any>
->(schema: T, properties: P) {
+>(schema: T, properties: P): RTFMetaDataEffect<T, P> {
   const metadata = {
     ...getSchemaMetadata<P, T>(schema),
     ...properties,
@@ -38,9 +55,9 @@ export function addSchemaMetadata<
     schema: schema,
     typeName: ZodFirstPartyTypeKind.ZodEffects,
     effect: { type: "refinement", refinement: () => true },
-  });
+  }) as RTFMetaDataEffect<T, P>;
 
-  (withMetadata as any)._def[METADATA_ID_PROPERTY] = metadata;
+  withMetadata._def[METADATA_ID_PROPERTY] = metadata;
 
   return withMetadata;
 }
