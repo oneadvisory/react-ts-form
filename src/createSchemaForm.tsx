@@ -196,26 +196,29 @@ export type PropType<
         SchemaType,
         key
       > extends never
-        ? UnwrapEffects<SchemaType>["shape"][key] extends z.AnyZodObject
-          ? PropType<
-              Mapping,
-              UnwrapEffects<SchemaType>["shape"][key],
-              PropsMapType,
-              Prev[Level]
-            >
-          : UnwrapEffects<SchemaType>["shape"][key] extends z.ZodArray<any>
-          ? PropType<
-              Mapping,
-              UnwrapEffects<SchemaType>["shape"][key]["element"],
-              PropsMapType,
-              Prev[Level]
-            >
-          : never
+        ? EvalNestedProps<
+            // Both shape and value can be wrapped
+            UnwrapEffects<UnwrapEffects<SchemaType>["shape"][key]>,
+            Mapping,
+            PropsMapType,
+            Level
+          >
         : MappedComponentProps<
             GetTupleFromMapping<Mapping, SchemaType, key>,
             PropsMapType
           >;
     }>;
+
+type EvalNestedProps<
+  T,
+  Mapping extends FormComponentMapping,
+  PropsMapType extends PropsMapping,
+  Level extends Prev[number]
+> = T extends z.AnyZodObject
+  ? PropType<Mapping, T, PropsMapType, Prev[Level]>
+  : T extends z.ZodArray<any>
+  ? PropType<Mapping, T["element"], PropsMapType, Prev[Level]>
+  : never;
 
 type PrepareProps<
   T,
