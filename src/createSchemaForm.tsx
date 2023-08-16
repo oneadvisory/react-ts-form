@@ -264,19 +264,27 @@ export type RenderedFieldMap<
 > = [Level] extends [never]
   ? never
   : {
-      [key in keyof z.infer<
-        UnwrapEffects<SchemaType>
-      >]: UnwrapEffects<SchemaType>["shape"][key] extends z.AnyZodObject
-        ? RenderedFieldMap<UnwrapEffects<SchemaType>["shape"][key], Prev[Level]>
-        : UnwrapEffects<SchemaType>["shape"][key] extends z.ZodArray<any>
-        ? UnwrapEffects<SchemaType>["shape"][key]["element"] extends z.AnyZodObject
-          ? RenderedFieldMap<
-              UnwrapEffects<SchemaType>["shape"][key]["element"],
-              Prev[Level]
-            >[]
-          : JSX.Element[]
-        : JSX.Element;
+      [key in keyof z.infer<UnwrapEffects<SchemaType>>]: EvalFieldMapValue<
+        // Both shape and value can be wrapped
+        UnwrapEffects<UnwrapEffects<SchemaType>["shape"][key]>,
+        Level
+      >;
     };
+
+type EvalFieldMapValue<T, Level extends Prev[number]> = T extends z.AnyZodObject
+  ? ObjectMapElement<T, Level>
+  : T extends z.ZodArray<any>
+  ? T["element"] extends z.AnyZodObject
+    ? ObjectMapElement<T["element"], Level>[]
+    : JSX.Element[]
+  : JSX.Element;
+
+type ObjectMapElement<
+  SchemaType extends AnyZodObject,
+  Level extends Prev[number] = MaxDefaultRecursionDepth
+> = JSX.Element & {
+  fields: RenderedFieldMap<SchemaType, Prev[Level]>;
+};
 
 type CombineMappings<
   Mapping extends FormComponentMapping,
@@ -549,16 +557,25 @@ export function createTsForm<
         if (isAnyZodObject(unwrapped)) {
           const shape: Record<string, RTFSupportedZodTypes> =
             unwrapped._def.shape();
-          return Object.entries(shape).reduce((accum, [subKey, subType]) => {
-            accum[subKey] = renderComponentForSchemaDeep(
+
+          const childKeys: Record<string, RenderedElement> = {};
+          const childList = Object.entries(shape).map(([subKey, subType]) => {
+            childKeys[subKey] = renderComponentForSchemaDeep(
               subType,
               props?.[key],
               subKey,
               `${prefixedKey}.${subKey}`,
               currentValue && currentValue[subKey]
             );
-            return accum;
-          }, {} as RenderedObjectElements);
+            return childKeys[subKey];
+          });
+
+          const ObjectWrapper = (
+            <>{childList}</>
+          ) as ObjectMapElement<AnyZodObject>;
+          Object.assign(ObjectWrapper, childKeys);
+
+          return ObjectWrapper;
         }
         if (isZodArray(unwrapped)) {
           return ((currentValue as Array<any> | undefined | null) ?? []).map(
