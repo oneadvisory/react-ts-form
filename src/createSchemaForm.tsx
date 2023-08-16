@@ -675,7 +675,7 @@ export type RenderedElement =
 export type RenderedObjectElements = { [key: string]: RenderedElement };
 
 /***
- * Can be useful in CustomChildComponents to flatten the rendered field map at a given leve
+ * Can be useful in CustomChildComponents to flatten the rendered field map at a given level
  */
 export function flattenRenderedElements(val: RenderedElement): JSX.Element[] {
   return Array.isArray(val)
