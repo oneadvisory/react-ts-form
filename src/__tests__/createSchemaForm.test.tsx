@@ -45,17 +45,22 @@ describe("createSchemaForm", () => {
       textField: z.string(),
       textFieldTwo: z.string(),
       booleanField: z.boolean(),
-      t: z.string(),
-      t2: z.string(),
-      t3: z.string(),
-      t4: z.string(),
-      t5: z.string(),
     });
 
     render(
       <TestForm
         onSubmit={() => {}}
         schema={testSchema}
+        mapping={
+          [
+            [
+              z.boolean(),
+              ({ testId }: { testId: string; propEvaled_: boolean }) => (
+                <div data-testid={testId}></div>
+              ),
+            ] as const,
+          ] as const
+        }
         props={{
           textField: {
             testId: testIds.textField,
@@ -65,6 +70,7 @@ describe("createSchemaForm", () => {
           },
           booleanField: {
             testId: testIds.booleanField,
+            propEvaled_: true,
           },
         }}
       />

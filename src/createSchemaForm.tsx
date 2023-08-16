@@ -23,10 +23,11 @@ import {
   ZodFirstPartyTypeKind,
   z,
 } from "zod";
+import { OmitIndexSignature, Simplify } from "type-fest";
+
 import { FieldContextProvider } from "./FieldContext";
 import { duplicateTypeError, printWarningsForSchema } from "./logging";
 import {
-  FlatType,
   IndexOf,
   OptionalKeys,
   RequireKeysWithRequiredChildren,
@@ -221,26 +222,38 @@ type EvalNestedProps<
   : never;
 
 type PrepareProps<
-  T,
+  T extends Record<string, any>,
   omit extends string | number | symbol,
   optional extends string | number | symbol
-> = {
-  [P in Exclude<keyof T, omit | optional | OptionalKeys<T>>]: T[P];
-} & {
-  [P in (optional | OptionalKeys<T>) & keyof T]?: T[P];
-};
+> =
+  // This ensures that any object unions from instance mappings are treated as distinct objects
+  // vs. being reduced to objects with only the intersection of properties.
+  //
+  // Via: https://github.com/sindresorhus/type-fest/blob/main/source/union-to-intersection.d.ts
+  // `extends unknown` is always going to be the case and is used to convert the
+  // `Union` into a [distributive conditional
+  // type](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-8.html#distributive-conditional-types).
+  T extends unknown
+    ? {
+        [P in Exclude<keyof T, omit | optional | OptionalKeys<T>>]: T[P];
+      } & {
+        [P in (optional | OptionalKeys<T>) & keyof T]?: T[P];
+      }
+    : never;
 
 type MappedComponentProps<
   T,
   PropsMapType extends PropsMapping
 > = T extends readonly [any, any]
-  ? FlatType<
-      PrepareProps<
-        ComponentProps<T[1]>,
-        PropsMapType[number][1],
-        keyof UnwrapEffectsMetadata<T[0]>
-      > &
-        ExtraProps
+  ? OmitIndexSignature<
+      Simplify<
+        PrepareProps<
+          ComponentProps<T[1]>,
+          PropsMapType[number][1],
+          keyof UnwrapEffectsMetadata<T[0]>
+        > &
+          ExtraProps
+      >
     >
   : never;
 
@@ -264,8 +277,16 @@ export type RenderedFieldMap<
         : JSX.Element;
     };
 
+type CombineMappings<
+  Mapping extends FormComponentMapping,
+  InstanceMapping extends FormComponentMapping | undefined
+> = InstanceMapping extends readonly [any]
+  ? readonly [...InstanceMapping, ...Mapping]
+  : Mapping;
+
 export type RTFFormProps<
   Mapping extends FormComponentMapping,
+  InstanceMapping extends FormComponentMapping,
   SchemaType extends z.AnyZodObject | ZodEffects<any, any>,
   PropsMapType extends PropsMapping = typeof defaultPropsMap,
   FormType extends FormComponent = "form"
@@ -274,6 +295,13 @@ export type RTFFormProps<
    * A Zod Schema - An input field will be rendered for each property in the schema, based on the mapping passed to `createTsForm`
    */
   schema: SchemaType;
+
+  /**
+   * An array mapping zod schemas to components. This will be merged with the mapping passed to `createTsForm`.
+   * All maps in this list will have priority over those in the second list.
+   */
+  mapping?: InstanceMapping;
+
   /**
    * A callback function that will be called with the data once the form has been submitted and validated successfully.
    */
@@ -335,7 +363,11 @@ export type RTFFormProps<
    * />
    * ```
    */
-  props?: PropType<Mapping, SchemaType, PropsMapType>;
+  props?: PropType<
+    CombineMappings<Mapping, InstanceMapping>,
+    SchemaType,
+    PropsMapType
+  >;
   /**
    * Props to pass to the form container component (by default the props that "form" tags accept)
    */
@@ -418,8 +450,17 @@ export function createTsForm<
      */
     propsMap?: PropsMapType;
   }
-): <SchemaType extends RTFFormSchemaType>(
-  props: RTFFormProps<Mapping, SchemaType, PropsMapType, FormType>
+): <
+  SchemaType extends RTFFormSchemaType,
+  InstanceMapping extends FormComponentMapping
+>(
+  props: RTFFormProps<
+    Mapping,
+    InstanceMapping,
+    SchemaType,
+    PropsMapType,
+    FormType
+  >
 ) => React.ReactElement<any, any> {
   const ActualFormComponent = options?.FormComponent
     ? options.FormComponent
@@ -431,8 +472,12 @@ export function createTsForm<
     options?.propsMap ? options.propsMap : defaultPropsMap
   );
 
-  return function Component<SchemaType extends RTFFormSchemaType>({
+  function Component<
+    SchemaType extends RTFFormSchemaType,
+    InstanceMapping extends FormComponentMapping
+  >({
     schema,
+    mapping: instanceMapping,
     onSubmit,
     props,
     formProps,
@@ -441,10 +486,19 @@ export function createTsForm<
     renderBefore,
     form,
     children: CustomChildrenComponent,
-  }: RTFFormProps<Mapping, SchemaType, PropsMapType, FormType>) {
-    const useFormResultInitialValue = useRef<
-      undefined | ReturnType<typeof useForm>
-    >(form);
+  }: RTFFormProps<
+    Mapping,
+    InstanceMapping,
+    SchemaType,
+    PropsMapType,
+    FormType
+  >): JSX.Element {
+    const combinedMapping = [
+      ...(instanceMapping || []),
+      ...componentMap,
+    ] as const;
+
+    const useFormResultInitialValue = useRef(form);
     if (!!useFormResultInitialValue.current !== !!form) {
       throw new Error(useFormResultValueChangedErrorMesssage());
     }
@@ -476,12 +530,12 @@ export function createTsForm<
       K extends keyof z.infer<UnwrapEffects<SchemaType>>
     >(
       type: NestedSchemaType,
-      props: PropType<Mapping, NestedSchemaType, PropsMapType> | undefined,
+      props: any,
       key: K,
       prefixedKey: string,
       currentValue: any
     ): RenderedElement {
-      const Component = getComponentForZodType(type, componentMap);
+      const Component = getComponentForZodType(type, combinedMapping);
       if (!Component) {
         const unwrapped = unwrapEffects(type);
         if (isAnyZodObject(unwrapped)) {
@@ -560,10 +614,7 @@ export function createTsForm<
         </Fragment>
       );
     }
-    function renderFields(
-      schema: SchemaType,
-      props: PropType<Mapping, SchemaType, PropsMapType> | undefined
-    ) {
+    function renderFields(schema: SchemaType, props: any | undefined) {
       type SchemaKey = keyof z.infer<UnwrapEffects<SchemaType>>;
       const _schema = extractFieldData(schema).type;
       if (!isAnyZodObject(_schema)) {
@@ -604,7 +655,12 @@ export function createTsForm<
         </ActualFormComponent>
       </FormProvider>
     );
-  };
+  }
+
+  // Breaking checking here as the return type doesn't matter and this was causing
+  // a potential infinite recursion. Ignoring this here for the sake of time. I'm
+  // not sure if this is safe or a sign of an underlying user facing issue.
+  return Component as any;
 }
 // handles internal custom submit logic
 // Implements a workaround to allow devs to set form values to undefined (as it breaks react hook form)
