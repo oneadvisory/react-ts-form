@@ -453,7 +453,7 @@ export function createTsForm<
   }
 ): <
   SchemaType extends RTFFormSchemaType,
-  InstanceMapping extends FormComponentMapping
+  InstanceMapping extends FormComponentMapping = []
 >(
   props: RTFFormProps<
     Mapping,
