@@ -7,6 +7,7 @@ import React, {
   ReactNode,
   RefAttributes,
   useEffect,
+  useMemo,
   useRef,
 } from "react";
 import {
@@ -512,6 +513,13 @@ export function createTsForm<
       return uf;
     })();
 
+    const customChildrenRef = useRef(CustomChildrenComponent);
+    customChildrenRef.current = CustomChildrenComponent;
+
+    const StableComponent = useMemo(() => {
+      return (props: any) => customChildrenRef.current?.(props) ?? null;
+    }, []);
+
     useEffect(() => {
       if (form && defaultValues) {
         form.reset(defaultValues);
@@ -646,8 +654,8 @@ export function createTsForm<
       <FormProvider {..._form}>
         <ActualFormComponent {...formProps} onSubmit={submitFn}>
           {renderBefore && renderBefore({ submit: submitFn })}
-          {CustomChildrenComponent ? (
-            <CustomChildrenComponent {...renderedFields} />
+          {customChildrenRef.current ? (
+            <StableComponent {...renderedFields} />
           ) : (
             renderedFieldNodes
           )}
