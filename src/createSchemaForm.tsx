@@ -552,7 +552,7 @@ export function createTsForm<
           return Object.entries(shape).reduce((accum, [subKey, subType]) => {
             accum[subKey] = renderComponentForSchemaDeep(
               subType,
-              props && props[subKey] ? (props[subKey] as any) : undefined,
+              props?.[key],
               subKey,
               `${prefixedKey}.${subKey}`,
               currentValue && currentValue[subKey]
