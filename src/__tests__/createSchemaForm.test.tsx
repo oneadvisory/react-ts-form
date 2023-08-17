@@ -150,7 +150,7 @@ describe("createSchemaForm", () => {
           },
         }}
       >
-        {({ textField, booleanField, ...restFields }) => {
+        {({ fields: { textField, booleanField, ...restFields } }) => {
           return (
             <>
               <div data-testid={extraTestIds.extra1}>{textField}</div>
@@ -1524,7 +1524,7 @@ describe("createSchemaForm", () => {
           return <button type="submit">submit</button>;
         }}
       >
-        {(renderedFields) => {
+        {({ fields: renderedFields }) => {
           return (
             <>
               {renderedFields.arrayField.map(

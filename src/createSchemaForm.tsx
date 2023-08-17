@@ -19,7 +19,7 @@ import { OmitIndexSignature, Simplify } from "type-fest";
 import { ZodEffects, z } from "zod";
 
 import {
-  RenderedFieldMap,
+  RenderFunctionProps,
   flattenRenderedElements,
   renderFields,
 } from "./fields";
@@ -320,7 +320,7 @@ export type RTFFormProps<
    * ```
    */
   form?: UseFormReturn<z.infer<SchemaType>>;
-  children?: FunctionComponent<RenderedFieldMap<SchemaType>>;
+  children?: FunctionComponent<RenderFunctionProps<SchemaType>>;
 } & RequireKeysWithRequiredChildren<{
   /**
    * Props to pass to the individual form components. The keys of `props` will be the names of your form properties in the form schema, and they will
@@ -520,7 +520,10 @@ export function createTsForm<
         <ActualFormComponent {...formProps} onSubmit={submitFn}>
           {renderBefore && renderBefore({ submit: submitFn })}
           {customChildrenRef.current ? (
-            <StableComponent {...renderedFields} />
+            <StableComponent
+              elements={renderedFieldNodes}
+              fields={renderedFields}
+            />
           ) : (
             renderedFieldNodes
           )}

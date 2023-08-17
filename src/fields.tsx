@@ -23,6 +23,17 @@ import {
 } from "./zod";
 import { extractFieldData } from "./zod/fieldData";
 
+export type RenderFunctionProps<
+  SchemaType extends AnyZodObject | ZodEffects<any, any>
+> = {
+  elements: {
+    [key in keyof z.infer<UnwrapEffects<SchemaType>>]:
+      | JSX.Element
+      | JSX.Element[];
+  };
+  fields: RenderedFieldMap<SchemaType>;
+};
+
 export type RenderedFieldMap<
   SchemaType extends AnyZodObject | ZodEffects<any, any>,
   Level extends Prev[number] = MaxDefaultRecursionDepth
@@ -47,9 +58,7 @@ type EvalFieldMapValue<T, Level extends Prev[number]> = T extends z.AnyZodObject
 type ObjectMapElement<
   SchemaType extends AnyZodObject,
   Level extends Prev[number] = MaxDefaultRecursionDepth
-> = {
-  fields: RenderedFieldMap<SchemaType, Prev[Level]>;
-};
+> = RenderedFieldMap<SchemaType, Prev[Level]>;
 
 export type RenderedElement =
   | JSX.Element
@@ -134,7 +143,7 @@ function renderComponentForSchemaDeep<
         unwrapped._def.shape();
 
       const childKeys: Record<string, RenderedElement> = {};
-      return Object.entries(shape).map(([subKey, subType]) => {
+      Object.entries(shape).forEach(([subKey, subType]) => {
         childKeys[subKey] = renderComponentForSchemaDeep({
           ...props,
           type: subType,
@@ -143,11 +152,11 @@ function renderComponentForSchemaDeep<
           prefixedKey: `${prefixedKey}.${subKey}`,
           currentValue: currentValue?.[subKey],
         });
-        return childKeys[subKey]!;
       });
+      return childKeys;
     }
     if (isZodArray(unwrapped)) {
-      return ((currentValue as Array<any> | undefined | null) ?? []).map(
+      const ret = ((currentValue as Array<any> | undefined | null) ?? []).map(
         (item, index) => {
           return renderComponentForSchemaDeep({
             ...props,
@@ -159,6 +168,7 @@ function renderComponentForSchemaDeep<
           });
         }
       );
+      return ret;
     }
     throw new Error(
       noMatchingSchemaErrorMessage(key.toString(), unwrapped._def.typeName)
@@ -214,11 +224,17 @@ function renderComponentForSchemaDeep<
  * Can be useful in CustomChildComponents to flatten the rendered field map at a given level
  */
 export function flattenRenderedElements(val: RenderedElement): JSX.Element[] {
-  return Array.isArray(val)
-    ? val.flatMap((obj) => flattenRenderedElements(obj))
-    : typeof val === "object" && val !== null && !React.isValidElement(val)
-    ? Object.values(val).reduce((accum: JSX.Element[], val) => {
-        return accum.concat(flattenRenderedElements(val as any));
-      }, [] as JSX.Element[])
-    : [val];
+  if (Array.isArray(val)) {
+    return val.flatMap((obj) => flattenRenderedElements(obj));
+  }
+
+  if (React.isValidElement(val)) {
+    return [val];
+  }
+
+  if (val && typeof val === "object") {
+    return Object.values(val).flatMap((obj) => flattenRenderedElements(obj));
+  }
+
+  return [val ?? null];
 }
