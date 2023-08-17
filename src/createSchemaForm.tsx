@@ -2,7 +2,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, {
   ComponentProps,
   ForwardRefExoticComponent,
-  Fragment,
   FunctionComponent,
   ReactNode,
   RefAttributes,
@@ -12,22 +11,20 @@ import React, {
 } from "react";
 import {
   DeepPartial,
-  ErrorOption,
   FormProvider,
   UseFormReturn,
   useForm,
 } from "react-hook-form";
-import {
-  AnyZodObject,
-  ZodArray,
-  ZodEffects,
-  ZodFirstPartyTypeKind,
-  z,
-} from "zod";
 import { OmitIndexSignature, Simplify } from "type-fest";
+import { ZodEffects, z } from "zod";
 
-import { FieldContextProvider } from "./FieldContext";
+import {
+  RenderedFieldMap,
+  flattenRenderedElements,
+  renderFields,
+} from "./fields";
 import { duplicateTypeError, printWarningsForSchema } from "./logging";
+import { useSubmitter } from "./submitter";
 import {
   IndexOf,
   OptionalKeys,
@@ -36,18 +33,15 @@ import {
 } from "./typeUtilities";
 import { IndexOfUnwrapZodType } from "./unwrap";
 import {
+  Prev,
   RTFBaseZodType,
   RTFSupportedZodTypes,
   UnwrapEffects,
   UnwrapEffectsMetadata,
   UnwrapEffectsValue,
-  getComponentForZodType,
-  getMetaInformationForZodType,
   isZodTypeEqual,
-  unwrapEffects,
 } from "./zod";
 import { getSchemaId } from "./zod/createFieldSchema";
-import { extractFieldData } from "./zod/fieldData";
 
 /**
  * @internal
@@ -85,7 +79,7 @@ export function noMatchingSchemaErrorMessage(
   return `No matching zod schema for type \`${propertyType}\` found in mapping for property \`${propertyName}\`. Make sure there's a matching zod schema for every property in your schema.`;
 }
 
-export function useFormResultValueChangedErrorMesssage() {
+export function useFormResultValueChangedErrorMessage() {
   return `useFormResult prop changed - its value shouldn't changed during the lifetime of the component.`;
 }
 
@@ -140,7 +134,7 @@ const defaultPropsMap = [
   ["enumValues", "enumValues"] as const,
 ] as const;
 
-function propsMapToObect(propsMap: PropsMapping) {
+export function propsMapToObect(propsMap: PropsMapping) {
   const r: { [key in MappableProp]+?: string } = {};
   for (const [mappable, toProp] of propsMap) {
     r[mappable] = toProp;
@@ -181,7 +175,6 @@ export type GetTupleFromMapping<
     ]
   : never;
 
-export type Prev = [never, 0, 1, 2, 3];
 export type MaxDefaultRecursionDepth = 1;
 
 export type PropType<
@@ -257,34 +250,6 @@ type MappedComponentProps<
       >
     >
   : never;
-
-export type RenderedFieldMap<
-  SchemaType extends AnyZodObject | ZodEffects<any, any>,
-  Level extends Prev[number] = MaxDefaultRecursionDepth
-> = [Level] extends [never]
-  ? never
-  : {
-      [key in keyof z.infer<UnwrapEffects<SchemaType>>]: EvalFieldMapValue<
-        // Both shape and value can be wrapped
-        UnwrapEffects<UnwrapEffects<SchemaType>["shape"][key]>,
-        Level
-      >;
-    };
-
-type EvalFieldMapValue<T, Level extends Prev[number]> = T extends z.AnyZodObject
-  ? ObjectMapElement<T, Level>
-  : T extends z.ZodArray<any>
-  ? T["element"] extends z.AnyZodObject
-    ? ObjectMapElement<T["element"], Level>[]
-    : JSX.Element[]
-  : JSX.Element;
-
-type ObjectMapElement<
-  SchemaType extends AnyZodObject,
-  Level extends Prev[number] = MaxDefaultRecursionDepth
-> = JSX.Element & {
-  fields: RenderedFieldMap<SchemaType, Prev[Level]>;
-};
 
 type CombineMappings<
   Mapping extends FormComponentMapping,
@@ -488,7 +453,7 @@ export function createTsForm<
     schema,
     mapping: instanceMapping,
     onSubmit,
-    props,
+    props: fieldComponentProps,
     formProps,
     defaultValues,
     renderAfter,
@@ -509,7 +474,7 @@ export function createTsForm<
 
     const useFormResultInitialValue = useRef(form);
     if (!!useFormResultInitialValue.current !== !!form) {
-      throw new Error(useFormResultValueChangedErrorMesssage());
+      throw new Error(useFormResultValueChangedErrorMessage());
     }
     const resolver = zodResolver(schema);
     const _form = (() => {
@@ -533,7 +498,7 @@ export function createTsForm<
         form.reset(defaultValues);
       }
     }, []);
-    const { control, handleSubmit, setError, getValues } = _form;
+    const { handleSubmit, setError } = _form;
     const submitter = useSubmitter({
       resolver,
       onSubmit,
@@ -541,131 +506,14 @@ export function createTsForm<
     });
     const submitFn = handleSubmit(submitter.submit);
 
-    function renderComponentForSchemaDeep<
-      NestedSchemaType extends RTFSupportedZodTypes,
-      K extends keyof z.infer<UnwrapEffects<SchemaType>>
-    >(
-      type: NestedSchemaType,
-      props: any,
-      key: K,
-      prefixedKey: string,
-      currentValue: any
-    ): RenderedElement {
-      const Component = getComponentForZodType(type, combinedMapping);
-      if (!Component) {
-        const unwrapped = unwrapEffects(type);
-        if (isAnyZodObject(unwrapped)) {
-          const shape: Record<string, RTFSupportedZodTypes> =
-            unwrapped._def.shape();
-
-          const childKeys: Record<string, RenderedElement> = {};
-          const childList = Object.entries(shape).map(([subKey, subType]) => {
-            childKeys[subKey] = renderComponentForSchemaDeep(
-              subType,
-              props?.[key],
-              subKey,
-              `${prefixedKey}.${subKey}`,
-              currentValue && currentValue[subKey]
-            );
-            return childKeys[subKey];
-          });
-
-          const ObjectWrapper = (
-            <>{childList}</>
-          ) as ObjectMapElement<AnyZodObject>;
-          Object.assign(ObjectWrapper, childKeys);
-
-          return ObjectWrapper;
-        }
-        if (isZodArray(unwrapped)) {
-          return ((currentValue as Array<any> | undefined | null) ?? []).map(
-            (item, index) => {
-              return renderComponentForSchemaDeep(
-                unwrapped.element,
-                props,
-                key,
-                `${prefixedKey}[${index}]`,
-                item
-              );
-            }
-          );
-        }
-        throw new Error(
-          noMatchingSchemaErrorMessage(key.toString(), unwrapped._def.typeName)
-        );
-      }
-      const meta = getMetaInformationForZodType(type);
-
-      // TODO: we could define a LeafType in the recursive PropType above that only gets applied when we have an actual mapping then we could typeguard to it or cast here
-      // until then this thinks (correctly) that fieldProps might not have beforeElement, afterElement at this level of the prop tree
-      const fieldProps = props && props[key] ? (props[key] as any) : {};
-
-      const { beforeElement, afterElement } = fieldProps;
-
-      const mergedProps = {
-        ...(propsMap.name && { [propsMap.name]: prefixedKey }),
-        ...(propsMap.control && { [propsMap.control]: control }),
-        ...(propsMap.enumValues && {
-          [propsMap.enumValues]: meta.enumValues,
-        }),
-        ...(propsMap.descriptionLabel && {
-          [propsMap.descriptionLabel]: meta.description?.label,
-        }),
-        ...(propsMap.descriptionPlaceholder && {
-          [propsMap.descriptionPlaceholder]: meta.description?.placeholder,
-        }),
-        ...meta.metadata,
-        ...fieldProps,
-      };
-      const ctxLabel = meta.description?.label;
-      const ctxPlaceholder = meta.description?.placeholder;
-
-      return (
-        <Fragment key={prefixedKey}>
-          {beforeElement}
-          <FieldContextProvider
-            control={control}
-            name={prefixedKey}
-            label={ctxLabel}
-            zodType={type}
-            placeholder={ctxPlaceholder}
-            enumValues={meta.enumValues as string[] | undefined}
-            addToCoerceUndefined={submitter.addToCoerceUndefined}
-            removeFromCoerceUndefined={submitter.removeFromCoerceUndefined}
-          >
-            <Component key={prefixedKey} {...mergedProps} />
-          </FieldContextProvider>
-          {afterElement}
-        </Fragment>
-      );
-    }
-    function renderFields(schema: SchemaType, props: any | undefined) {
-      type SchemaKey = keyof z.infer<UnwrapEffects<SchemaType>>;
-      const _schema = extractFieldData(schema).type;
-      if (!isAnyZodObject(_schema)) {
-        throw new Error(
-          `renderFields expects a zod object schema but got ${_schema._def.typeName}`
-        );
-      }
-      const shape: Record<string, RTFSupportedZodTypes> = _schema._def.shape();
-      return Object.entries(shape).reduce(
-        (accum, [key, type]: [SchemaKey, RTFSupportedZodTypes]) => {
-          // we know this is a string but TS thinks it can be number and symbol so just in case stringify
-          const stringKey = key.toString();
-          accum[stringKey] = renderComponentForSchemaDeep(
-            type,
-            props as any,
-            stringKey,
-            stringKey,
-            getValues()[key]
-          );
-          return accum;
-        },
-        {} as RenderedObjectElements
-      ) as RenderedFieldMap<SchemaType>;
-    }
-
-    const renderedFields = renderFields(schema, props);
+    const renderedFields = renderFields({
+      form: _form,
+      combinedMapping,
+      schema,
+      fieldComponentProps,
+      propsMap,
+      submitter,
+    });
     const renderedFieldNodes = flattenRenderedElements(renderedFields);
     return (
       <FormProvider {..._form}>
@@ -686,84 +534,4 @@ export function createTsForm<
   // a potential infinite recursion. Ignoring this here for the sake of time. I'm
   // not sure if this is safe or a sign of an underlying user facing issue.
   return Component as any;
-}
-// handles internal custom submit logic
-// Implements a workaround to allow devs to set form values to undefined (as it breaks react hook form)
-// For example https://github.com/react-hook-form/react-hook-form/discussions/2797
-function useSubmitter<SchemaType extends RTFFormSchemaType>({
-  resolver,
-  onSubmit,
-  setError,
-}: {
-  resolver: ReturnType<typeof zodResolver>;
-  onSubmit: RTFFormSubmitFn<SchemaType>;
-  setError: ReturnType<typeof useForm>["setError"];
-}) {
-  const coerceUndefinedFieldsRef = useRef<Set<string>>(new Set());
-
-  function addToCoerceUndefined(fieldName: string) {
-    coerceUndefinedFieldsRef.current.add(fieldName);
-  }
-
-  function removeFromCoerceUndefined(fieldName: string) {
-    coerceUndefinedFieldsRef.current.delete(fieldName);
-  }
-
-  function removeUndefined(data: any) {
-    const r = { ...data };
-    for (const undefinedField of coerceUndefinedFieldsRef.current) {
-      delete r[undefinedField];
-    }
-    return r;
-  }
-
-  function submit(data: z.infer<SchemaType>) {
-    return resolver(removeUndefined(data), {} as any, {} as any).then(
-      async (e) => {
-        const errorKeys = Object.keys(e.errors);
-        if (!errorKeys.length) {
-          await onSubmit(data);
-          return;
-        }
-        for (const key of errorKeys) {
-          setError(
-            key as any,
-            (e.errors as any)[key] as unknown as ErrorOption
-          );
-        }
-      }
-    );
-  }
-
-  return {
-    submit,
-    removeUndefined,
-    removeFromCoerceUndefined,
-    addToCoerceUndefined,
-  };
-}
-
-const isAnyZodObject = (schema: RTFSupportedZodTypes): schema is AnyZodObject =>
-  schema._def.typeName === ZodFirstPartyTypeKind.ZodObject;
-const isZodArray = (schema: RTFSupportedZodTypes): schema is ZodArray<any> =>
-  schema._def.typeName === ZodFirstPartyTypeKind.ZodArray;
-
-export type RenderedElement =
-  | JSX.Element
-  | JSX.Element[]
-  | RenderedObjectElements
-  | RenderedElement[];
-export type RenderedObjectElements = { [key: string]: RenderedElement };
-
-/***
- * Can be useful in CustomChildComponents to flatten the rendered field map at a given level
- */
-export function flattenRenderedElements(val: RenderedElement): JSX.Element[] {
-  return Array.isArray(val)
-    ? val.flatMap((obj) => flattenRenderedElements(obj))
-    : typeof val === "object" && val !== null && !React.isValidElement(val)
-    ? Object.values(val).reduce((accum: JSX.Element[], val) => {
-        return accum.concat(flattenRenderedElements(val as any));
-      }, [] as JSX.Element[])
-    : [val];
 }

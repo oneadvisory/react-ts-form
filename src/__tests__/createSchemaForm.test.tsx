@@ -12,7 +12,7 @@ import {
 import {
   createTsForm,
   noMatchingSchemaErrorMessage,
-  useFormResultValueChangedErrorMesssage,
+  useFormResultValueChangedErrorMessage,
 } from "../createSchemaForm";
 import {
   SPLIT_DESCRIPTION_SYMBOL as DESCRIPTION_SEPARATOR_SYMBOL,
@@ -536,7 +536,7 @@ describe("createSchemaForm", () => {
     const button = screen.getByTestId(buttonId);
 
     await expect(userEvent.click(button)).rejects.toThrowError(
-      useFormResultValueChangedErrorMesssage()
+      useFormResultValueChangedErrorMessage()
     );
   });
   it("should be possible to set and read form state with useTsController", async () => {
