@@ -1,10 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, {
   ComponentProps,
-  ForwardRefExoticComponent,
   FunctionComponent,
   ReactNode,
-  RefAttributes,
   useEffect,
   useMemo,
   useRef,
@@ -31,10 +29,16 @@ import {
   RequireKeysWithRequiredChildren,
   UnwrapMapping,
 } from "./typeUtilities";
+import {
+  FormComponentMapping,
+  MappableProp,
+  PropsMapping,
+  RTFFormSchemaType,
+  RTFFormSubmitFn,
+} from "./apiTypes";
 import { IndexOfUnwrapZodType } from "./unwrap";
 import {
   Prev,
-  RTFBaseZodType,
   RTFSupportedZodTypes,
   UnwrapEffects,
   UnwrapEffectsMetadata,
@@ -42,35 +46,6 @@ import {
   isZodTypeEqual,
 } from "./zod";
 import { getSchemaId } from "./zod/createFieldSchema";
-
-/**
- * @internal
- */
-export type ReactProps = Record<string, any>;
-
-/**
- * @internal
- */
-export type ReactComponentWithRequiredProps<
-  Props extends ReactProps
-  // ExtraProps extends Record<string, any> = {}
-> =
-  | ((props: Props) => JSX.Element)
-  | (ForwardRefExoticComponent<Props> & RefAttributes<unknown>);
-
-export type MappingItem<PropType extends ReactProps> = readonly [
-  RTFBaseZodType,
-  ReactComponentWithRequiredProps<PropType>
-];
-
-export type FormComponentMapping = readonly MappingItem<any>[];
-export type MappableProp =
-  | "control"
-  | "name"
-  | "enumValues"
-  | "descriptionLabel"
-  | "descriptionPlaceholder";
-export type PropsMapping = readonly (readonly [MappableProp, string])[];
 
 export function noMatchingSchemaErrorMessage(
   propertyName: string,
@@ -142,10 +117,6 @@ export function propsMapToObect(propsMap: PropsMapping) {
   return r;
 }
 
-export type RTFFormSchemaType = z.AnyZodObject | ZodEffects<any, any>;
-export type RTFFormSubmitFn<SchemaType extends RTFFormSchemaType> = (
-  values: z.infer<SchemaType>
-) => void | Promise<void>;
 export type SchemaShape<SchemaType extends RTFSupportedZodTypes> = ReturnType<
   UnwrapEffects<SchemaType>["_def"]["shape"]
 >;

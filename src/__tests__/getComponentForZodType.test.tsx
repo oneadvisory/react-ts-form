@@ -1,7 +1,7 @@
 import React from "react";
-import { FormComponentMapping } from "../createSchemaForm";
 import { z } from "zod";
 import { getComponentForZodType } from "../zod/getComponentForZodType";
+import { FormComponentMapping } from "../apiTypes";
 
 function TextField(_: {}) {
   return <input />;

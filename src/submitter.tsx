@@ -2,10 +2,10 @@
 // Implements a workaround to allow devs to set form values to undefined (as it breaks react hook form)
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { RTFFormSchemaType, RTFFormSubmitFn } from "./createSchemaForm";
 import { ErrorOption, useForm } from "react-hook-form";
 import { useRef } from "react";
 import { z } from "zod";
+import { RTFFormSchemaType, RTFFormSubmitFn } from "./apiTypes";
 
 // For example https://github.com/react-hook-form/react-hook-form/discussions/2797
 export function useSubmitter<SchemaType extends RTFFormSchemaType>({

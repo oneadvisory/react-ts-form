@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { FormComponentMapping } from "./createSchemaForm";
 import { RTFBaseZodType, UnwrapEffects } from "./zod";
+import { FormComponentMapping } from "./apiTypes";
 
 /**
  * @internal

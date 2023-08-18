@@ -3,9 +3,7 @@ import { UseFormReturn } from "react-hook-form";
 import { AnyZodObject, ZodEffects, z } from "zod";
 import { FieldContextProvider } from "./FieldContext";
 import {
-  FormComponentMapping,
   MaxDefaultRecursionDepth,
-  RTFFormSchemaType,
   noMatchingSchemaErrorMessage,
   propsMapToObect,
 } from "./createSchemaForm";
@@ -22,6 +20,7 @@ import {
   unwrapEffects,
 } from "./zod";
 import { extractFieldData } from "./zod/fieldData";
+import { FormComponentMapping, RTFFormSchemaType } from "./apiTypes";
 
 export type RenderFunctionProps<
   SchemaType extends AnyZodObject | ZodEffects<any, any>
