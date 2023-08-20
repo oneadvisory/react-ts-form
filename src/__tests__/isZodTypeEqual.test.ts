@@ -131,7 +131,7 @@ describe("isZodTypeEqual", () => {
 
     expect(isZodTypeEqual(A, A)).toStrictEqual(true);
   });
-  it("should return true when a nullable is compared to a nonnullable version", () => {
+  it("should return true when a nullable is compared to a non-nullable version", () => {
     const A = z.string();
     const B = A.nullable();
 

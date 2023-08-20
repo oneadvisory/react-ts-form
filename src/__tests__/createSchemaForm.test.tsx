@@ -763,7 +763,7 @@ describe("createSchemaForm", () => {
     expect(screen.getByText(label)).toBeInTheDocument();
     expect(screen.getByText(placeholder)).toBeInTheDocument();
   });
-  it("should throw an error when there is no placeholder passed via .describe() and useReqDesription is called", () => {
+  it("should throw an error when there is no placeholder passed via .describe() and useReqDescription is called", () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     const label = "label";
     function Component() {
@@ -789,7 +789,7 @@ describe("createSchemaForm", () => {
       )
     ).toThrow();
   });
-  it("should throw an error when there is nothing passed via .describe() and useReqDesription is called", () => {
+  it("should throw an error when there is nothing passed via .describe() and useReqDescription is called", () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     function Component() {
       const { label, placeholder } = useReqDescription();
@@ -814,7 +814,7 @@ describe("createSchemaForm", () => {
       )
     ).toThrow();
   });
-  it("should pass a description and label via useReqDescription without propforwarding enabled", () => {
+  it("should pass a description and label via useReqDescription without prop forwarding enabled", () => {
     function Comp() {
       const { label, placeholder } = useReqDescription();
       return (
@@ -1381,7 +1381,7 @@ describe("createSchemaForm", () => {
       screen.queryByText(testData.arrayTextField.label)
     ).toBeInTheDocument();
   });
-  it("should render the correct components for a nested object schema if unmaped", async () => {
+  it("should render the correct components for a nested object schema if unmapped", async () => {
     const NumberSchema = createUniqueFieldSchema(z.number(), "number");
     const mockOnSubmit = jest.fn();
 
@@ -1500,7 +1500,7 @@ describe("createSchemaForm", () => {
         schema={schema}
         onSubmit={mockOnSubmit}
         defaultValues={defaultValues}
-        // otherObj tests that nonrecursive mapping still works at the last level of the recursion depth
+        // otherObj tests that non-recursive mapping still works at the last level of the recursion depth
         props={{ arrayField: { text: { a: 1 }, otherObj: { objProp: 2 } } }}
         renderAfter={() => {
           return <button type="submit">submit</button>;
@@ -1538,7 +1538,7 @@ describe("createSchemaForm", () => {
     expect(mockOnSubmit).toHaveBeenCalledWith(defaultValues);
   });
 
-  it("should render an array component despite recusions", async () => {
+  it("should render an array component despite recursions", async () => {
     const mockOnSubmit = jest.fn(() => {});
     function DynamicArray() {
       const {

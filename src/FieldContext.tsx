@@ -23,6 +23,8 @@ import {
 import { ZodDefaultDef } from "zod";
 import { UnwrapZodType } from "./unwrap";
 import { extractFieldData } from "./zod/fieldData";
+import { useSubmitter } from "./submitter";
+import { FormComponentMapping } from "./apiTypes";
 
 export const FieldContext = createContext<null | {
   control: Control<any>;
@@ -31,8 +33,9 @@ export const FieldContext = createContext<null | {
   placeholder?: string;
   enumValues?: (string | number)[];
   zodType: RTFSupportedZodTypes;
-  addToCoerceUndefined: (v: string) => void;
-  removeFromCoerceUndefined: (v: string) => void;
+
+  submitter: ReturnType<typeof useSubmitter>;
+  mapping: FormComponentMapping;
 }>(null);
 
 export function FieldContextProvider({
@@ -43,8 +46,8 @@ export function FieldContextProvider({
   placeholder,
   enumValues,
   zodType,
-  addToCoerceUndefined,
-  removeFromCoerceUndefined,
+  submitter,
+  mapping,
 }: {
   name: string;
   control: Control<any>;
@@ -53,8 +56,8 @@ export function FieldContextProvider({
   enumValues?: string[];
   children: ReactNode;
   zodType: RTFSupportedZodTypes;
-  addToCoerceUndefined: (v: string) => void;
-  removeFromCoerceUndefined: (v: string) => void;
+  submitter: ReturnType<typeof useSubmitter>;
+  mapping: FormComponentMapping;
 }) {
   return (
     <FieldContext.Provider
@@ -65,8 +68,8 @@ export function FieldContextProvider({
         placeholder,
         enumValues,
         zodType,
-        addToCoerceUndefined,
-        removeFromCoerceUndefined,
+        submitter,
+        mapping,
       }}
     >
       {children}
@@ -125,10 +128,10 @@ export function useTsController<FieldType extends any>() {
   function _onChange(value: OnChangeValue) {
     if (value === undefined) {
       setIsUndefined(true);
-      context.addToCoerceUndefined(context.name);
+      context.submitter.addToCoerceUndefined(context.name);
     } else {
       setIsUndefined(false);
-      context.removeFromCoerceUndefined(context.name);
+      context.submitter.removeFromCoerceUndefined(context.name);
       onChange(value);
     }
   }
@@ -136,7 +139,7 @@ export function useTsController<FieldType extends any>() {
   useEffect(() => {
     if (value && isUndefined) {
       setIsUndefined(false);
-      context.removeFromCoerceUndefined(context.name);
+      context.submitter.removeFromCoerceUndefined(context.name);
     }
   }, [value]);
 

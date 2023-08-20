@@ -17,6 +17,12 @@ import { OmitIndexSignature, Simplify } from "type-fest";
 import { ZodEffects, z } from "zod";
 
 import {
+  FormComponentMapping,
+  RTFFormSchemaType,
+  RTFFormSubmitFn,
+} from "./apiTypes";
+import {
+  RTFFieldProps,
   RenderFunctionProps,
   flattenRenderedElements,
   renderFields,
@@ -29,13 +35,6 @@ import {
   RequireKeysWithRequiredChildren,
   UnwrapMapping,
 } from "./typeUtilities";
-import {
-  FormComponentMapping,
-  MappableProp,
-  PropsMapping,
-  RTFFormSchemaType,
-  RTFFormSubmitFn,
-} from "./apiTypes";
 import { IndexOfUnwrapZodType } from "./unwrap";
 import {
   Prev,
@@ -103,20 +102,6 @@ export function duplicateIdErrorMessage(id: string) {
   return `Duplicate id passed to createFieldSchema: ${id}. Ensure that each id is only being used once and that createFieldSchema is only called at the top level.`;
 }
 
-const defaultPropsMap = [
-  ["name", "name"] as const,
-  ["control", "control"] as const,
-  ["enumValues", "enumValues"] as const,
-] as const;
-
-export function propsMapToObect(propsMap: PropsMapping) {
-  const r: { [key in MappableProp]+?: string } = {};
-  for (const [mappable, toProp] of propsMap) {
-    r[mappable] = toProp;
-  }
-  return r;
-}
-
 export type SchemaShape<SchemaType extends RTFSupportedZodTypes> = ReturnType<
   UnwrapEffects<SchemaType>["_def"]["shape"]
 >;
@@ -151,7 +136,6 @@ export type MaxDefaultRecursionDepth = 1;
 export type PropType<
   Mapping extends FormComponentMapping,
   SchemaType extends RTFSupportedZodTypes,
-  PropsMapType extends PropsMapping = typeof defaultPropsMap,
   // this controls the depth we allow TS to go into the schema. 2 is enough for most cases, but we could consider exposing this as a generic to allow users to control the depth
   Level extends Prev[number] = MaxDefaultRecursionDepth
 > = [Level] extends [never]
@@ -166,24 +150,19 @@ export type PropType<
             // Both shape and value can be wrapped
             UnwrapEffects<UnwrapEffects<SchemaType>["shape"][key]>,
             Mapping,
-            PropsMapType,
             Level
           >
-        : MappedComponentProps<
-            GetTupleFromMapping<Mapping, SchemaType, key>,
-            PropsMapType
-          >;
+        : MappedComponentProps<GetTupleFromMapping<Mapping, SchemaType, key>>;
     }>;
 
 type EvalNestedProps<
   T,
   Mapping extends FormComponentMapping,
-  PropsMapType extends PropsMapping,
   Level extends Prev[number]
 > = T extends z.AnyZodObject
-  ? PropType<Mapping, T, PropsMapType, Prev[Level]>
+  ? PropType<Mapping, T, Prev[Level]>
   : T extends z.ZodArray<any>
-  ? PropType<Mapping, T["element"], PropsMapType, Prev[Level]>
+  ? PropType<Mapping, T["element"], Prev[Level]>
   : never;
 
 type PrepareProps<
@@ -206,15 +185,12 @@ type PrepareProps<
       }
     : never;
 
-type MappedComponentProps<
-  T,
-  PropsMapType extends PropsMapping
-> = T extends readonly [any, any]
+type MappedComponentProps<T> = T extends readonly [any, any]
   ? OmitIndexSignature<
       Simplify<
         PrepareProps<
           ComponentProps<T[1]>,
-          PropsMapType[number][1],
+          RTFFieldProps,
           keyof UnwrapEffectsMetadata<T[0]>
         > &
           ExtraProps
@@ -229,23 +205,14 @@ type CombineMappings<
   ? readonly [...InstanceMapping, ...Mapping]
   : Mapping;
 
-export type RTFFormProps<
+export type RTFFormBaseProps<
   Mapping extends FormComponentMapping,
-  InstanceMapping extends FormComponentMapping,
-  SchemaType extends z.AnyZodObject | ZodEffects<any, any>,
-  PropsMapType extends PropsMapping = typeof defaultPropsMap,
-  FormType extends FormComponent = "form"
+  SchemaType extends z.AnyZodObject | ZodEffects<any, any>
 > = {
   /**
    * A Zod Schema - An input field will be rendered for each property in the schema, based on the mapping passed to `createTsForm`
    */
   schema: SchemaType;
-
-  /**
-   * An array mapping zod schemas to components. This will be merged with the mapping passed to `createTsForm`.
-   * All maps in this list will have priority over those in the second list.
-   */
-  mapping?: InstanceMapping;
 
   /**
    * A callback function that will be called with the data once the form has been submitted and validated successfully.
@@ -255,6 +222,56 @@ export type RTFFormProps<
    * Initializes your form with default values. Is a deep partial, so all properties and nested properties are optional.
    */
   defaultValues?: DeepPartial<z.infer<UnwrapEffectsValue<SchemaType>>>;
+  /**
+   * Use this if you need access to the `react-hook-form` useForm() in the component containing the form component (if you need access to any of its other properties.)
+   * This will give you full control over you form state (in case you need check if it's dirty or reset it or anything.)
+   * @example
+   * ```tsx
+   * function Component() {
+   *   const form = useForm();
+   *   return <MyForm useFormResult={form}/>
+   * }
+   * ```
+   */
+  form?: UseFormReturn<z.infer<SchemaType>>;
+} & RequireKeysWithRequiredChildren<{
+  /**
+   * Props to pass to the individual form components. The keys of `props` will be the names of your form properties in the form schema, and they will
+   * be typesafe to the form components in the mapping passed to `createTsForm`. If any of the rendered form components have required props, this is required.
+   * @example
+   * ```tsx
+   * <MyForm
+   *  schema={z.object({field: z.string()})}
+   *  props={{
+   *    field: {
+   *      // TextField props
+   *    }
+   *  }}
+   * />
+   * ```
+   */
+  props?: PropType<Mapping, SchemaType>;
+}>;
+
+export type RTFFormHookProps<
+  Mapping extends FormComponentMapping,
+  SchemaType extends z.AnyZodObject | ZodEffects<any, any>
+> = RTFFormBaseProps<Mapping, SchemaType> & {
+  mapping: Mapping;
+};
+
+export type RTFFormProps<
+  Mapping extends FormComponentMapping,
+  InstanceMapping extends FormComponentMapping,
+  SchemaType extends z.AnyZodObject | ZodEffects<any, any>,
+  FormType extends FormComponent = "form"
+> = RTFFormBaseProps<CombineMappings<Mapping, InstanceMapping>, SchemaType> & {
+  /**
+   * An array mapping zod schemas to components. This will be merged with the mapping passed to `createTsForm`.
+   * All maps in this list will have priority over those in the second list.
+   */
+  mapping?: InstanceMapping;
+
   /**
    * A function that renders components after the form, the function is passed a `submit` function that can be used to trigger
    * form submission.
@@ -279,45 +296,14 @@ export type RTFFormProps<
    * ```
    */
   renderBefore?: (vars: { submit: () => void }) => ReactNode;
-  /**
-   * Use this if you need access to the `react-hook-form` useForm() in the component containing the form component (if you need access to any of its other properties.)
-   * This will give you full control over you form state (in case you need check if it's dirty or reset it or anything.)
-   * @example
-   * ```tsx
-   * function Component() {
-   *   const form = useForm();
-   *   return <MyForm useFormResult={form}/>
-   * }
-   * ```
-   */
-  form?: UseFormReturn<z.infer<SchemaType>>;
+
   children?: FunctionComponent<RenderFunctionProps<SchemaType>>;
 } & RequireKeysWithRequiredChildren<{
-  /**
-   * Props to pass to the individual form components. The keys of `props` will be the names of your form properties in the form schema, and they will
-   * be typesafe to the form components in the mapping passed to `createTsForm`. If any of the rendered form components have required props, this is required.
-   * @example
-   * ```tsx
-   * <MyForm
-   *  schema={z.object({field: z.string()})}
-   *  props={{
-   *    field: {
-   *      // TextField props
-   *    }
-   *  }}
-   * />
-   * ```
-   */
-  props?: PropType<
-    CombineMappings<Mapping, InstanceMapping>,
-    SchemaType,
-    PropsMapType
-  >;
-  /**
-   * Props to pass to the form container component (by default the props that "form" tags accept)
-   */
-  formProps?: Omit<ComponentProps<FormType>, "children" | "onSubmit">;
-}>;
+    /**
+     * Props to pass to the form container component (by default the props that "form" tags accept)
+     */
+    formProps?: Omit<ComponentProps<FormType>, "children" | "onSubmit">;
+  }>;
 
 /**
  * Creates a reusable, typesafe form component based on a zod-component mapping.
@@ -333,7 +319,6 @@ export type RTFFormProps<
  */
 export function createTsForm<
   Mapping extends FormComponentMapping,
-  PropsMapType extends PropsMapping = typeof defaultPropsMap,
   FormType extends FormComponent = "form"
 >(
   /**
@@ -371,41 +356,12 @@ export function createTsForm<
      * ```
      */
     FormComponent?: FormType;
-    /**
-     * Modify which props the form control and such get passed to when rendering components. This can make it easier to integrate existing
-     * components with `@ts-react/form` or modify its behavior. The values of the object are the names of the props to forward the corresponding
-     * data to.
-     * @default {
-     *  name: "name",
-     *  control: "control",
-     *  enumValues: "enumValues",
-     * }
-     * @example
-     * ```tsx
-     * function MyTextField({someControlProp}:{someControlProp: Control<any>}) {
-     *  //...
-     * }
-     *
-     * const createTsForm(mapping, {
-     *  propsMap: {
-     *    control: "someControlProp"
-     *  }
-     * })
-     * ```
-     */
-    propsMap?: PropsMapType;
   }
 ): <
   SchemaType extends RTFFormSchemaType,
   InstanceMapping extends FormComponentMapping = []
 >(
-  props: RTFFormProps<
-    Mapping,
-    InstanceMapping,
-    SchemaType,
-    PropsMapType,
-    FormType
-  >
+  props: RTFFormProps<Mapping, InstanceMapping, SchemaType, FormType>
 ) => React.ReactElement<any, any> {
   const ActualFormComponent = options?.FormComponent
     ? options.FormComponent
@@ -413,9 +369,6 @@ export function createTsForm<
   const schemas = componentMap.map((e) => e[0]);
   checkForDuplicateTypes(schemas);
   checkForDuplicateUniqueFields(schemas);
-  const propsMap = propsMapToObect(
-    options?.propsMap ? options.propsMap : defaultPropsMap
-  );
 
   function Component<
     SchemaType extends RTFFormSchemaType,
@@ -435,7 +388,6 @@ export function createTsForm<
     Mapping,
     InstanceMapping,
     SchemaType,
-    PropsMapType,
     FormType
   >): JSX.Element {
     const combinedMapping = [
@@ -443,19 +395,20 @@ export function createTsForm<
       ...componentMap,
     ] as const;
 
-    const useFormResultInitialValue = useRef(form);
-    if (!!useFormResultInitialValue.current !== !!form) {
-      throw new Error(useFormResultValueChangedErrorMessage());
-    }
-    const resolver = zodResolver(schema);
-    const _form = (() => {
-      if (form) return form;
-      const uf = useForm({
-        resolver,
-        defaultValues,
-      });
-      return uf;
-    })();
+    const {
+      form: _form,
+      handleSubmit,
+      elements,
+      fields,
+      // @ts-ignore
+    } = useTsForm({
+      schema,
+      mapping: combinedMapping,
+      props: fieldComponentProps,
+      form,
+      defaultValues,
+      onSubmit,
+    });
 
     const customChildrenRef = useRef(CustomChildrenComponent);
     customChildrenRef.current = CustomChildrenComponent;
@@ -464,41 +417,16 @@ export function createTsForm<
       return (props: any) => customChildrenRef.current?.(props) ?? null;
     }, []);
 
-    useEffect(() => {
-      if (form && defaultValues) {
-        form.reset(defaultValues);
-      }
-    }, []);
-    const { handleSubmit, setError } = _form;
-    const submitter = useSubmitter({
-      resolver,
-      onSubmit,
-      setError,
-    });
-    const submitFn = handleSubmit(submitter.submit);
-
-    const renderedFields = renderFields({
-      form: _form,
-      combinedMapping,
-      schema,
-      fieldComponentProps,
-      propsMap,
-      submitter,
-    });
-    const renderedFieldNodes = flattenRenderedElements(renderedFields);
     return (
       <FormProvider {..._form}>
-        <ActualFormComponent {...formProps} onSubmit={submitFn}>
-          {renderBefore && renderBefore({ submit: submitFn })}
+        <ActualFormComponent {...formProps} onSubmit={handleSubmit}>
+          {renderBefore && renderBefore({ submit: handleSubmit })}
           {customChildrenRef.current ? (
-            <StableComponent
-              elements={renderedFieldNodes}
-              fields={renderedFields}
-            />
+            <StableComponent elements={elements} fields={fields} />
           ) : (
-            renderedFieldNodes
+            elements
           )}
-          {renderAfter && renderAfter({ submit: submitFn })}
+          {renderAfter && renderAfter({ submit: handleSubmit })}
         </ActualFormComponent>
       </FormProvider>
     );
@@ -508,4 +436,60 @@ export function createTsForm<
   // a potential infinite recursion. Ignoring this here for the sake of time. I'm
   // not sure if this is safe or a sign of an underlying user facing issue.
   return Component as any;
+}
+
+export function useTsForm<
+  SchemaType extends z.AnyZodObject | ZodEffects<any, any>,
+  Mapping extends FormComponentMapping
+>({
+  schema,
+  mapping,
+  props: fieldComponentProps,
+  form,
+  defaultValues,
+  onSubmit,
+}: RTFFormHookProps<Mapping, SchemaType>) {
+  const useFormResultInitialValue = useRef(form);
+  if (!!useFormResultInitialValue.current !== !!form) {
+    throw new Error(useFormResultValueChangedErrorMessage());
+  }
+  const resolver = zodResolver(schema);
+  const _form = (() => {
+    if (form) return form;
+    const uf = useForm({
+      resolver,
+      defaultValues,
+    });
+    return uf;
+  })();
+
+  useEffect(() => {
+    if (form && defaultValues) {
+      form.reset(defaultValues);
+    }
+  }, []);
+  const { handleSubmit, setError } = _form;
+  const submitter = useSubmitter({
+    resolver,
+    onSubmit,
+    setError,
+  });
+  const submitFn = handleSubmit(submitter.submit);
+
+  const renderedFields = renderFields({
+    form: _form,
+    combinedMapping: mapping,
+    schema,
+    fieldComponentProps,
+    submitter,
+  });
+  const renderedFieldNodes = flattenRenderedElements(renderedFields);
+
+  return {
+    form: _form,
+    handleSubmit: submitFn,
+
+    elements: renderedFieldNodes,
+    fields: renderedFields,
+  };
 }

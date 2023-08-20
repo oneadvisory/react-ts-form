@@ -3,6 +3,7 @@ import { Control, useController } from "react-hook-form";
 import { z } from "zod";
 import { createUniqueFieldSchema } from "../../zod/createFieldSchema";
 import { createTsForm } from "../../createSchemaForm";
+import { useDescription } from "../../FieldContext";
 
 export const textFieldTestId = "text-field";
 
@@ -10,13 +11,12 @@ export function TextField(props: {
   control: Control<any>;
   name: string;
   testId?: string;
-  label?: string;
-  placeholder?: string;
 }) {
-  const { label, placeholder } = props;
   const {
     field: { onChange, value },
   } = useController({ control: props.control, name: props.name });
+  const { label, placeholder } = useDescription();
+
   return (
     <div data-testid={textFieldTestId}>
       {label && <label>{label}</label>}
@@ -64,15 +64,9 @@ function CustomTextField(props: {
 }
 export const enumFieldValues = ["a", "b", "c"] as const;
 
-function EnumField({
-  enumValues = [],
-  label,
-  placeholder,
-}: {
-  enumValues?: string[];
-  label?: string;
-  placeholder?: string;
-}) {
+function EnumField({ enumValues = [] }: { enumValues?: string[] }) {
+  const { label, placeholder } = useDescription();
+
   return (
     <div>
       <span>{label}</span>
@@ -94,17 +88,7 @@ const mapping = [
   [z.enum(enumFieldValues), EnumField] as const,
 ] as const;
 
-const propsMap = [
-  ["name", "name"] as const,
-  ["control", "control"] as const,
-  ["enumValues", "enumValues"] as const,
-  ["descriptionLabel", "label"] as const,
-  ["descriptionPlaceholder", "placeholder"] as const,
-] as const;
-
-export const TestForm = createTsForm(mapping, {
-  propsMap: propsMap,
-});
+export const TestForm = createTsForm(mapping, {});
 
 const FormWithSubmit = ({
   children,
@@ -118,6 +102,5 @@ const FormWithSubmit = ({
   </form>
 );
 export const TestFormWithSubmit = createTsForm(mapping, {
-  propsMap: propsMap,
   FormComponent: FormWithSubmit,
 });

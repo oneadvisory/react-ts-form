@@ -2,10 +2,10 @@ import React, { Fragment } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { AnyZodObject, ZodEffects, z } from "zod";
 import { FieldContextProvider } from "./FieldContext";
+import { FormComponentMapping, RTFFormSchemaType } from "./apiTypes";
 import {
   MaxDefaultRecursionDepth,
   noMatchingSchemaErrorMessage,
-  propsMapToObect,
 } from "./createSchemaForm";
 import { useSubmitter } from "./submitter";
 import {
@@ -20,7 +20,8 @@ import {
   unwrapEffects,
 } from "./zod";
 import { extractFieldData } from "./zod/fieldData";
-import { FormComponentMapping, RTFFormSchemaType } from "./apiTypes";
+
+export type RTFFieldProps = "name" | "control" | "enumValues";
 
 export type RenderFunctionProps<
   SchemaType extends AnyZodObject | ZodEffects<any, any>
@@ -61,23 +62,25 @@ type ObjectMapElement<
 
 export type RenderedElement =
   | JSX.Element
-  | JSX.Element[]
   | RenderedObjectElements
   | RenderedElement[];
 export type RenderedObjectElements = { [key: string]: RenderedElement };
 
-interface RenderFieldsProps<SchemaType extends RTFSupportedZodTypes> {
+interface RenderFieldsProps<
+  Mapping extends FormComponentMapping,
+  SchemaType extends RTFSupportedZodTypes
+> {
   form: UseFormReturn<z.infer<UnwrapEffectsValue<SchemaType>>>;
   submitter: ReturnType<typeof useSubmitter>;
-  combinedMapping: FormComponentMapping;
+  combinedMapping: Mapping;
   schema: SchemaType;
   fieldComponentProps: any;
-  propsMap: ReturnType<typeof propsMapToObect>;
 }
 
-export function renderFields<SchemaType extends RTFFormSchemaType>(
-  props: RenderFieldsProps<SchemaType>
-) {
+export function renderFields<
+  Mapping extends FormComponentMapping,
+  SchemaType extends RTFFormSchemaType
+>(props: RenderFieldsProps<Mapping, SchemaType>) {
   const { form, schema } = props;
   type SchemaKey = keyof z.infer<UnwrapEffects<SchemaType>>;
   const _schema = extractFieldData(schema).type;
@@ -93,8 +96,8 @@ export function renderFields<SchemaType extends RTFFormSchemaType>(
       const stringKey = key.toString();
       accum[stringKey] = renderComponentForSchemaDeep({
         ...props,
-        type,
-        key: stringKey,
+        schema: type,
+        fieldComponentProps: props.fieldComponentProps?.[key],
         prefixedKey: stringKey,
         currentValue: form.getValues()[key],
       });
@@ -105,63 +108,43 @@ export function renderFields<SchemaType extends RTFFormSchemaType>(
 }
 
 interface RenderedFieldMapProps<
-  SchemaType extends RTFSupportedZodTypes,
-  NestedSchemaType extends RTFSupportedZodTypes,
-  K extends keyof z.infer<UnwrapEffects<SchemaType>>
-> extends Omit<RenderFieldsProps<NestedSchemaType>, "schema"> {
-  type: SchemaType;
-  key: K;
+  Mapping extends FormComponentMapping,
+  SchemaType extends RTFSupportedZodTypes
+> extends RenderFieldsProps<Mapping, SchemaType> {
   prefixedKey: string;
   currentValue: any;
 }
 
 function renderComponentForSchemaDeep<
-  SchemaType extends RTFSupportedZodTypes,
-  NestedSchemaType extends RTFSupportedZodTypes,
-  K extends keyof z.infer<UnwrapEffects<SchemaType>>
->(
-  props: RenderedFieldMapProps<SchemaType, NestedSchemaType, K>
-): RenderedElement {
+  Mapping extends FormComponentMapping,
+  SchemaType extends RTFSupportedZodTypes
+>(context: RenderedFieldMapProps<Mapping, SchemaType>): RenderedElement {
   const {
     form,
     submitter,
     combinedMapping,
-    type,
+    schema,
     fieldComponentProps,
-    key,
     prefixedKey,
     currentValue,
-    propsMap,
-  } = props;
+  } = context;
 
-  const Component = getComponentForZodType(type, combinedMapping);
+  var { childFields, unwrapped } = renderObjectChildren<Mapping, SchemaType>(
+    context
+  );
+
+  const Component = getComponentForZodType(schema, combinedMapping);
   if (!Component) {
-    const unwrapped = unwrapEffects(type);
-    if (isZodObject(unwrapped)) {
-      const shape: Record<string, RTFSupportedZodTypes> =
-        unwrapped._def.shape();
-
-      const childKeys: Record<string, RenderedElement> = {};
-      Object.entries(shape).forEach(([subKey, subType]) => {
-        childKeys[subKey] = renderComponentForSchemaDeep({
-          ...props,
-          type: subType,
-          fieldComponentProps: fieldComponentProps?.[key],
-          key: subKey,
-          prefixedKey: `${prefixedKey}.${subKey}`,
-          currentValue: currentValue?.[subKey],
-        });
-      });
-      return childKeys;
+    if (childFields) {
+      return childFields;
     }
     if (isZodArray(unwrapped)) {
       const ret = ((currentValue as Array<any> | undefined | null) ?? []).map(
         (item, index) => {
           return renderComponentForSchemaDeep({
-            ...props,
-            type: unwrapped.element,
+            ...context,
+            schema: unwrapped.element,
             fieldComponentProps,
-            key,
             prefixedKey: `${prefixedKey}[${index}]`,
             currentValue: item,
           });
@@ -170,31 +153,24 @@ function renderComponentForSchemaDeep<
       return ret;
     }
     throw new Error(
-      noMatchingSchemaErrorMessage(key.toString(), unwrapped._def.typeName)
+      noMatchingSchemaErrorMessage(
+        context.prefixedKey.toString(),
+        unwrapped._def.typeName
+      )
     );
   }
-  const meta = getMetaInformationForZodType(type);
+  const meta = getMetaInformationForZodType(schema);
 
-  // TODO: we could define a LeafType in the recursive PropType above that only gets applied when we have an actual mapping then we could type guard to it or cast here
-  // until then this thinks (correctly) that fieldProps might not have beforeElement, afterElement at this level of the prop tree
-  const fieldProps = (fieldComponentProps?.[key] as any) ?? {};
-
-  const { beforeElement, afterElement } = fieldProps;
+  const { beforeElement, afterElement } = fieldComponentProps ?? {};
 
   const mergedProps = {
-    ...(propsMap.name && { [propsMap.name]: prefixedKey }),
-    ...(propsMap.control && { [propsMap.control]: form.control }),
-    ...(propsMap.enumValues && {
-      [propsMap.enumValues]: meta.enumValues,
-    }),
-    ...(propsMap.descriptionLabel && {
-      [propsMap.descriptionLabel]: meta.description?.label,
-    }),
-    ...(propsMap.descriptionPlaceholder && {
-      [propsMap.descriptionPlaceholder]: meta.description?.placeholder,
-    }),
+    name: prefixedKey,
+    control: form.control,
+
+    fields: childFields,
+    enumValues: meta.enumValues,
     ...meta.metadata,
-    ...fieldProps,
+    ...fieldComponentProps,
   };
   const ctxLabel = meta.description?.label;
   const ctxPlaceholder = meta.description?.placeholder;
@@ -206,17 +182,43 @@ function renderComponentForSchemaDeep<
         control={form.control}
         name={prefixedKey}
         label={ctxLabel}
-        zodType={type}
+        zodType={schema}
         placeholder={ctxPlaceholder}
         enumValues={meta.enumValues as string[] | undefined}
-        addToCoerceUndefined={submitter.addToCoerceUndefined}
-        removeFromCoerceUndefined={submitter.removeFromCoerceUndefined}
+        submitter={submitter}
+        mapping={combinedMapping}
       >
         <Component key={prefixedKey} {...mergedProps} />
       </FieldContextProvider>
       {afterElement}
     </Fragment>
   );
+}
+
+export function renderObjectChildren<
+  Mapping extends FormComponentMapping,
+  SchemaType extends RTFSupportedZodTypes
+>(context: RenderedFieldMapProps<Mapping, SchemaType>) {
+  const { fieldComponentProps, currentValue, prefixedKey } = context;
+
+  const unwrapped = unwrapEffects(context.schema);
+
+  let childFields: Record<string, RenderedElement> | undefined;
+  if (isZodObject(unwrapped)) {
+    const shape: Record<string, RTFSupportedZodTypes> = unwrapped._def.shape();
+
+    childFields = {};
+    Object.entries(shape).forEach(([subKey, subType]) => {
+      childFields![subKey] = renderComponentForSchemaDeep({
+        ...context,
+        schema: subType,
+        fieldComponentProps: fieldComponentProps?.[subKey],
+        prefixedKey: `${prefixedKey}.${subKey}`,
+        currentValue: currentValue?.[subKey],
+      });
+    });
+  }
+  return { childFields, unwrapped };
 }
 
 /***

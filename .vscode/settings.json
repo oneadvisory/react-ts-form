@@ -4,5 +4,12 @@
     "titleBar.activeBackground": "#513C12",
     "titleBar.activeForeground": "#FDFBF6"
   },
-  "typescript.tsdk": "node_modules/typescript/lib"
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "cSpell.words": [
+    "hookform",
+    "nokay",
+    "parameterless",
+    "unwrappable",
+    "Woohoo"
+  ]
 }
