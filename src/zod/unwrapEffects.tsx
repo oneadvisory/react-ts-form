@@ -3,13 +3,13 @@ import {
   ZodDefault,
   ZodEffects,
   ZodFirstPartySchemaTypes,
-  ZodFirstPartyTypeKind,
   ZodNullable,
   ZodOptional,
   ZodTypeAny,
+  z,
 } from "zod";
-import { RTFSupportedZodTypes } from "./supportedZodTypes";
 import { RTFMetaDataEffect } from "./schemaMetadata";
+import { RTFSupportedZodTypes } from "./supportedZodTypes";
 
 export type Prev = [never, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 type MaxEffectRecursionDepth = 10;
@@ -70,20 +70,40 @@ export type MultipleEffects<T extends ZodTypeAny> =
   | ZodEffects<ZodEffects<ZodEffects<T>>>
   | ZodEffects<ZodEffects<ZodEffects<ZodEffects<T>>>>;
 
+export const unwrappable = new Set<z.ZodFirstPartyTypeKind>([
+  z.ZodFirstPartyTypeKind.ZodOptional,
+  z.ZodFirstPartyTypeKind.ZodNullable,
+  z.ZodFirstPartyTypeKind.ZodBranded,
+  z.ZodFirstPartyTypeKind.ZodEffects,
+  z.ZodFirstPartyTypeKind.ZodDefault,
+]);
+
 export function unwrapEffects<T extends ZodTypeAny>(
-  effects: MultipleEffects<T>
+  r: MultipleEffects<T>
 ): UnwrapEffects<T> {
-  if (!effects) {
+  if (!r) {
     throw new Error("effects must be a zod object");
   }
 
-  while (effects._def?.typeName === ZodFirstPartyTypeKind.ZodEffects) {
-    if (!effects._def.schema) {
-      break;
+  while (unwrappable.has(r._def.typeName)) {
+    switch (r._def.typeName) {
+      case z.ZodFirstPartyTypeKind.ZodOptional:
+      case z.ZodFirstPartyTypeKind.ZodNullable:
+      case z.ZodFirstPartyTypeKind.ZodDefault:
+        r = r._def.innerType;
+        break;
+      case z.ZodFirstPartyTypeKind.ZodBranded:
+        r = r._def.type;
+        break;
+      case z.ZodFirstPartyTypeKind.ZodEffects:
+        if (!r._def.schema) {
+          break;
+        }
+        r = r._def.schema;
+        break;
     }
-
-    effects = effects._def.schema;
   }
+
   // @ts-expect-error ship it
-  return effects as unknown as T;
+  return r as unknown as T;
 }

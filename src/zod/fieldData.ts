@@ -6,7 +6,7 @@ import {
 } from "./supportedZodTypes";
 import { getSchemaId } from "./createFieldSchema";
 import { getSchemaMetadata } from "./schemaMetadata";
-import { UnwrapEffectsMetadata } from "./unwrapEffects";
+import { UnwrapEffectsMetadata, unwrappable } from "./unwrapEffects";
 
 export type UnwrappedRTFSupportedZodTypes<
   M extends Record<string, any> = Record<string, any>
@@ -16,14 +16,6 @@ export type UnwrappedRTFSupportedZodTypes<
   description: ReturnType<typeof parseDescription>;
   metadata: M;
 };
-
-const unwrappable = new Set<z.ZodFirstPartyTypeKind>([
-  z.ZodFirstPartyTypeKind.ZodOptional,
-  z.ZodFirstPartyTypeKind.ZodNullable,
-  z.ZodFirstPartyTypeKind.ZodBranded,
-  z.ZodFirstPartyTypeKind.ZodEffects,
-  z.ZodFirstPartyTypeKind.ZodDefault,
-]);
 
 export function extractFieldData<T extends ZodFirstPartySchemaTypes>(
   type: T
