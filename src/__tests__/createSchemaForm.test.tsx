@@ -690,9 +690,9 @@ describe("createSchemaForm", () => {
 
     await act(async () => {
       await userEvent.click(button);
-      expect(submitting).toBe(true);
-      submitPromiseResolve();
     });
+    expect(submitting).toBe(true);
+    submitPromiseResolve();
     waitFor(() => expect(submitting).toBe(false));
   });
 
