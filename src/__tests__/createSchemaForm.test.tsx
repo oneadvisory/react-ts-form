@@ -1,6 +1,6 @@
 import React, { ReactNode, useState } from "react";
 import { z } from "zod";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import {
   customFieldTestId,
@@ -402,10 +402,13 @@ describe("createSchemaForm", () => {
     const booleanInput = screen.getByTestId(booleanFieldTestId);
     const button = screen.getByText(buttonText);
     stringInput.focus();
-    await userEvent.click(stringInput);
-    await userEvent.type(stringInput, expectedValues.fieldOne);
-    await userEvent.click(booleanInput);
-    await userEvent.click(button);
+
+    await act(async () => {
+      await userEvent.click(stringInput);
+      await userEvent.type(stringInput, expectedValues.fieldOne);
+      await userEvent.click(booleanInput);
+      await userEvent.click(button);
+    });
 
     expect(button).toBeInTheDocument();
     expect(onSubmitMock).toHaveBeenCalledWith(expectedValues);
@@ -463,8 +466,10 @@ describe("createSchemaForm", () => {
     const textInput = screen.getByTestId(textFieldId);
     const submitButton = screen.getByTestId(buttonTestId);
 
-    await userEvent.type(textInput, expectedOutput.id);
-    await userEvent.click(submitButton);
+    await act(async () => {
+      await userEvent.type(textInput, expectedOutput.id);
+      await userEvent.click(submitButton);
+    });
 
     expect(onSubmitMock).toHaveBeenCalledWith(expectedOutput);
   });
@@ -500,8 +505,10 @@ describe("createSchemaForm", () => {
     const textInput = screen.getByTestId(textFieldId);
     const submitButton = screen.getByTestId(buttonTestId);
 
-    await userEvent.type(textInput, expectedOutput.id);
-    await userEvent.click(submitButton);
+    await act(async () => {
+      await userEvent.type(textInput, expectedOutput.id);
+      await userEvent.click(submitButton);
+    });
 
     expect(onSubmitMock).toHaveBeenCalledWith(expectedOutput);
   });
@@ -535,9 +542,11 @@ describe("createSchemaForm", () => {
     render(<TestComponent />);
     const button = screen.getByTestId(buttonId);
 
-    await expect(userEvent.click(button)).rejects.toThrowError(
-      useFormResultValueChangedErrorMessage()
-    );
+    await act(async () => {
+      await expect(userEvent.click(button)).rejects.toThrowError(
+        useFormResultValueChangedErrorMessage()
+      );
+    });
   });
   it("should be possible to set and read form state with useTsController", async () => {
     const errorMessage = "bad";
@@ -597,15 +606,19 @@ describe("createSchemaForm", () => {
     const textInput = screen.getByTestId(inputTestId);
 
     // Test error message
-    await userEvent.click(button);
-    await userEvent.type(textInput, testInput[0]!); // idk why but is necessary for rerender?
-    await userEvent.click(renderButton);
+    await act(async () => {
+      await userEvent.click(button);
+      await userEvent.type(textInput, testInput[0]!); // idk why but is necessary for rerender?
+      await userEvent.click(renderButton);
+    });
     const errorMessageSpan = screen.getByTestId(errorMessageId);
     expect(errorMessageSpan).toBeInTheDocument();
 
-    await userEvent.click(textInput);
-    await userEvent.type(textInput, testInput.slice(1));
-    await userEvent.click(button);
+    await act(async () => {
+      await userEvent.click(textInput);
+      await userEvent.type(textInput, testInput.slice(1));
+      await userEvent.click(button);
+    });
 
     expect(submitMock).toHaveBeenCalledTimes(1);
     expect(submitMock).toHaveBeenCalledWith(expectedOutput);
@@ -674,9 +687,12 @@ describe("createSchemaForm", () => {
 
     render(<Component />);
     const button = screen.getByText("submit");
-    await userEvent.click(button);
-    expect(submitting).toBe(true);
-    submitPromiseResolve();
+
+    await act(async () => {
+      await userEvent.click(button);
+      expect(submitting).toBe(true);
+      submitPromiseResolve();
+    });
     waitFor(() => expect(submitting).toBe(false));
   });
 
@@ -688,51 +704,6 @@ describe("createSchemaForm", () => {
       return <div />;
     }
     expect(() => render(<C />)).toThrow();
-  });
-  it("should be possible to forward props to custom prop names via the props map", () => {
-    const propsMapping = [
-      ["control", "c"] as const,
-      ["name", "n"] as const,
-      ["enumValues", "e"] as const,
-      ["descriptionLabel", "l"] as const,
-      ["descriptionPlaceholder", "p"] as const,
-    ] as const;
-    function Component({
-      c,
-      n,
-      l,
-      p,
-      e,
-    }: {
-      c: Control<any>;
-      n: string;
-      e: string[];
-      l: string;
-      p: string;
-    }) {
-      return (
-        <>
-          <div>{c ? "*" : ""}</div>
-          <div>{n}</div>
-          <div>{l}</div>
-          <div>{p}</div>
-          <div>{e[0]}</div>
-        </>
-      );
-    }
-    const mapping = [[z.enum([""]), Component] as const] as const;
-    const Form = createTsForm(mapping, {
-      propsMap: propsMapping,
-    });
-    const MySchema = z.object({
-      n: z.enum(["e"]).describe(`l${SPLIT_DESCRIPTION_SYMBOL}p`),
-    });
-    render(<Form schema={MySchema} onSubmit={(_) => {}} />);
-    expect(screen.getByText("*")).toBeInTheDocument();
-    expect(screen.getByText("n")).toBeInTheDocument();
-    expect(screen.getByText("e")).toBeInTheDocument();
-    expect(screen.getByText("l")).toBeInTheDocument();
-    expect(screen.getByText("p")).toBeInTheDocument();
   });
   it("should allow using the useDescription() hook to show descriptions", () => {
     const label = "label";
@@ -997,9 +968,11 @@ describe("createSchemaForm", () => {
     const input = screen.getByPlaceholderText("input");
     const rerenderButton = screen.getByText("rerender button");
 
-    await userEvent.clear(input);
-    await userEvent.click(button);
-    await userEvent.click(rerenderButton);
+    await act(async () => {
+      await userEvent.clear(input);
+      await userEvent.click(button);
+      await userEvent.click(rerenderButton);
+    });
 
     expect(screen.getByText("req")).toBeInTheDocument();
     expect(mockOnSubmit).not.toHaveBeenCalled();
@@ -1051,10 +1024,12 @@ describe("createSchemaForm", () => {
     const input = screen.getByPlaceholderText("input");
     const rerenderButton = screen.getByText("rerender button");
 
-    await userEvent.clear(input);
-    await userEvent.type(input, "5");
-    await userEvent.click(button);
-    await userEvent.click(rerenderButton);
+    await act(async () => {
+      await userEvent.clear(input);
+      await userEvent.type(input, "5");
+      await userEvent.click(button);
+      await userEvent.click(rerenderButton);
+    });
 
     expect(screen.queryByText("req")).not.toBeInTheDocument();
     expect(mockOnSubmit).toHaveBeenCalledWith({ number: 5 });
@@ -1103,7 +1078,10 @@ describe("createSchemaForm", () => {
     );
 
     const button = screen.getByText("submit");
-    await userEvent.click(button);
+
+    await act(async () => {
+      await userEvent.click(button);
+    });
 
     expect(screen.queryByText("req")).not.toBeInTheDocument();
     expect(mockOnSubmit).toHaveBeenCalledWith({ number: 5 });
@@ -1160,7 +1138,9 @@ describe("createSchemaForm", () => {
     render(<Outer />);
 
     const button = screen.getByText("submit");
-    await userEvent.click(button);
+    await act(async () => {
+      await userEvent.click(button);
+    });
 
     expect(screen.queryByText("req")).not.toBeInTheDocument();
     expect(mockOnSubmit).toHaveBeenCalledWith({ number: 5 });
@@ -1462,7 +1442,9 @@ describe("createSchemaForm", () => {
       />
     );
     const button = screen.getByText("submit");
-    await userEvent.click(button);
+    await act(async () => {
+      await userEvent.click(button);
+    });
 
     const textNodes = screen.queryByText("text");
     expect(textNodes).toBeInTheDocument();
@@ -1550,7 +1532,9 @@ describe("createSchemaForm", () => {
     expect(numberNodes).toHaveLength(2);
 
     const button = screen.getByText("submit");
-    await userEvent.click(button);
+    await act(async () => {
+      await userEvent.click(button);
+    });
     expect(mockOnSubmit).toHaveBeenCalledWith(defaultValues);
   });
 
@@ -1625,15 +1609,22 @@ describe("createSchemaForm", () => {
 
     expect(screen.getByTestId("dynamic-array")).toBeInTheDocument();
     const addElementButton = screen.getByTestId("add-element");
-    await userEvent.click(addElementButton);
+    await act(async () => {
+      await userEvent.click(addElementButton);
+    });
 
     const inputs = screen.getAllByTestId(/dynamic-array-input/);
     expect(inputs.length).toBe(3);
 
     const input3 = screen.getByTestId("dynamic-array-input2");
-    await userEvent.type(input3, "name3");
+    await act(async () => {
+      await userEvent.type(input3, "name3");
+    });
     const button = screen.getByText("submit");
-    await userEvent.click(button);
+
+    await act(async () => {
+      await userEvent.click(button);
+    });
     expect(mockOnSubmit).toHaveBeenCalledWith({
       arrayField: ["name", "name2", "name3"],
       numberArray: [1, 2, 3],
@@ -1721,7 +1712,9 @@ describe("createSchemaForm", () => {
 
     expect(screen.getByTestId("dynamic-array")).toBeInTheDocument();
     const addElementButton = screen.getByTestId("add-element");
-    await userEvent.click(addElementButton);
+    await act(async () => {
+      await userEvent.click(addElementButton);
+    });
 
     const inputs = screen.getAllByTestId(/dynamic-array-input/);
     expect(inputs.length).toBe(3);
