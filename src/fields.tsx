@@ -1,7 +1,7 @@
-import React, { Fragment } from "react";
-import { UseFormReturn } from "react-hook-form";
+import React, { Fragment, ReactElement } from "react";
+import { UseFormReturn, useWatch } from "react-hook-form";
 import { AnyZodObject, ZodEffects, z } from "zod";
-import { FieldContextProvider } from "./FieldContext";
+import { FieldContextProvider, useContextProt } from "./FieldContext";
 import { FormComponentMapping, RTFFormSchemaType } from "./apiTypes";
 import {
   MaxDefaultRecursionDepth,
@@ -129,12 +129,12 @@ function renderComponentForSchemaDeep<
     currentValue,
   } = context;
 
-  var { childFields, unwrapped } = renderObjectChildren<Mapping, SchemaType>(
-    context
-  );
-
   const Component = getComponentForZodType(schema, combinedMapping);
   if (!Component) {
+    var { childFields, unwrapped } = renderObjectChildren<Mapping, SchemaType>(
+      context
+    );
+
     if (childFields) {
       return childFields;
     }
@@ -167,7 +167,6 @@ function renderComponentForSchemaDeep<
     name: prefixedKey,
     control: form.control,
 
-    fields: childFields,
     enumValues: meta.enumValues,
     ...meta.metadata,
     ...fieldComponentProps,
@@ -185,6 +184,7 @@ function renderComponentForSchemaDeep<
         zodType={schema}
         placeholder={ctxPlaceholder}
         enumValues={meta.enumValues as string[] | undefined}
+        fieldComponentProps={fieldComponentProps}
         submitter={submitter}
         mapping={combinedMapping}
       >
@@ -219,6 +219,112 @@ export function renderObjectChildren<
     });
   }
   return { childFields, unwrapped };
+}
+
+// TODO: Can we make props generic? Is that worth it?
+export function SchemaField(props: {
+  name: string;
+  props?: Record<string, any>;
+}): ReactElement {
+  const parentContext = useContextProt("SchemaField");
+  const { control, submitter, mapping } = parentContext;
+
+  const name = props.name;
+  const prefixedKey = parentContext.name + "." + name;
+
+  let schema: RTFSupportedZodTypes = parentContext.zodType;
+  let parentFieldComponentProps: any = parentContext.fieldComponentProps;
+
+  const nameParts = name.split(".");
+  nameParts.forEach((part) => {
+    const unwrappedParent = unwrapEffects(schema);
+    if (!isZodObject(unwrappedParent)) {
+      throw new Error("SchemaField must be used within a ZodObject");
+    }
+
+    schema = unwrappedParent._def.shape()[part];
+    parentFieldComponentProps = parentFieldComponentProps?.[part];
+  });
+
+  const currentValue = useWatch({
+    name: prefixedKey,
+    control,
+  });
+
+  // TODO: Deep?
+  const fieldComponentProps = {
+    ...parentFieldComponentProps,
+    ...props.props,
+  };
+
+  const Component = getComponentForZodType(schema, mapping);
+  if (!Component) {
+    const unwrapped = unwrapEffects(schema);
+
+    if (isZodObject(unwrapped)) {
+      return (
+        <>
+          {Object.keys(unwrapped._def.shape()).map((key) => (
+            <SchemaField key={key} name={key} props={props.props?.[key]} />
+          ))}
+        </>
+      );
+    }
+    if (isZodArray(unwrapped)) {
+      const ret = ((currentValue as Array<any> | undefined | null) ?? []).map(
+        (_, index) => {
+          return (
+            <SchemaField
+              key={index}
+              name={index.toString()}
+              props={fieldComponentProps}
+            />
+          );
+        }
+      );
+      return <>{ret}</>;
+    }
+    throw new Error(
+      noMatchingSchemaErrorMessage(
+        prefixedKey.toString(),
+        unwrapped._def.typeName
+      )
+    );
+  }
+  const meta = getMetaInformationForZodType(schema);
+
+  const { beforeElement, afterElement } = fieldComponentProps ?? {};
+
+  const mergedProps = {
+    name: prefixedKey,
+    control: control,
+
+    enumValues: meta.enumValues,
+    ...meta.metadata,
+    ...fieldComponentProps,
+  };
+  const ctxLabel = meta.description?.label;
+  const ctxPlaceholder = meta.description?.placeholder;
+
+  return (
+    <Fragment key={prefixedKey}>
+      {beforeElement}
+      <FieldContextProvider
+        control={control}
+        name={prefixedKey}
+        label={ctxLabel}
+        zodType={schema}
+        placeholder={ctxPlaceholder}
+        enumValues={meta.enumValues as string[] | undefined}
+        fieldComponentProps={fieldComponentProps}
+        submitter={submitter}
+        mapping={mapping}
+      >
+        <Component key={prefixedKey} {...mergedProps} />
+      </FieldContextProvider>
+      {afterElement}
+    </Fragment>
+  );
 }
 
 /***

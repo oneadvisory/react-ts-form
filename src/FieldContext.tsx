@@ -1,30 +1,35 @@
-import React, { useContext, useEffect, useState } from "react";
-import { createContext, ReactNode } from "react";
+import React, {
+  ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import {
   Control,
   DeepPartial,
-  useController,
   UseControllerReturn,
+  useController,
 } from "react-hook-form";
-import { errorFromRhfErrorObject } from "./zodObjectErrors";
 import {
-  isTypeOf,
-  isZodArray,
-  isZodDefaultDef,
   RTFSupportedZodFirstPartyTypeKind,
   RTFSupportedZodFirstPartyTypeKindMap,
   RTFSupportedZodTypes,
+  isTypeOf,
+  isZodArray,
+  isZodDefaultDef,
 } from "./zod";
+import { errorFromRhfErrorObject } from "./zodObjectErrors";
 
+import { ZodDefaultDef } from "zod";
+import { FormComponentMapping } from "./apiTypes";
+import { useSubmitter } from "./submitter";
+import { UnwrapZodType } from "./unwrap";
 import {
   PickPrimitiveObjectProperties,
   pickPrimitiveObjectProperties,
 } from "./utilities";
-import { ZodDefaultDef } from "zod";
-import { UnwrapZodType } from "./unwrap";
 import { extractFieldData } from "./zod/fieldData";
-import { useSubmitter } from "./submitter";
-import { FormComponentMapping } from "./apiTypes";
 
 export const FieldContext = createContext<null | {
   control: Control<any>;
@@ -34,6 +39,7 @@ export const FieldContext = createContext<null | {
   enumValues?: (string | number)[];
   zodType: RTFSupportedZodTypes;
 
+  fieldComponentProps: any;
   submitter: ReturnType<typeof useSubmitter>;
   mapping: FormComponentMapping;
 }>(null);
@@ -46,6 +52,7 @@ export function FieldContextProvider({
   placeholder,
   enumValues,
   zodType,
+  fieldComponentProps,
   submitter,
   mapping,
 }: {
@@ -56,6 +63,7 @@ export function FieldContextProvider({
   enumValues?: string[];
   children: ReactNode;
   zodType: RTFSupportedZodTypes;
+  fieldComponentProps: any;
   submitter: ReturnType<typeof useSubmitter>;
   mapping: FormComponentMapping;
 }) {
@@ -68,6 +76,7 @@ export function FieldContextProvider({
         placeholder,
         enumValues,
         zodType,
+        fieldComponentProps,
         submitter,
         mapping,
       }}
@@ -77,7 +86,7 @@ export function FieldContextProvider({
   );
 }
 
-function useContextProt(name: string) {
+export function useContextProt(name: string) {
   const context = useContext(FieldContext);
   if (!context)
     throw Error(
