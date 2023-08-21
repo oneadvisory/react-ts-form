@@ -18,6 +18,8 @@ import {
   isTypeOf,
   isZodArray,
   isZodDefaultDef,
+  isZodObject,
+  unwrapEffects,
 } from "./zod";
 import { errorFromRhfErrorObject } from "./zodObjectErrors";
 
@@ -134,14 +136,22 @@ export function useTsController<FieldType extends any>() {
   } = controller;
   const [isUndefined, setIsUndefined] = useState(false);
 
-  function _onChange(value: OnChangeValue) {
-    if (value === undefined) {
+  function _onChange(newValue: OnChangeValue) {
+    if (
+      isZodObject(unwrapEffects(context.zodType)) ||
+      isZodArray(unwrapEffects(context.zodType))
+    ) {
+      onChange(newValue);
+      return;
+    }
+
+    if (newValue === undefined) {
       setIsUndefined(true);
       context.submitter.addToCoerceUndefined(context.name);
     } else {
       setIsUndefined(false);
       context.submitter.removeFromCoerceUndefined(context.name);
-      onChange(value);
+      onChange(newValue);
     }
   }
 
