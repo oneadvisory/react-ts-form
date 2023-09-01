@@ -288,8 +288,18 @@ export function useEnumValues() {
 function getFieldInfo<
   TZodType extends RTFSupportedZodTypes,
   TUnwrapZodType extends UnwrapZodType<TZodType> = UnwrapZodType<TZodType>
->(zodType: TZodType) {
-  const { type, uniqueSchemaId } = extractFieldData(zodType);
+>(
+  zodType: TZodType
+): {
+  type: TUnwrapZodType;
+  zodType: TZodType;
+  uniqueId: string | undefined;
+  isOptional: boolean;
+  isNullable: boolean;
+  defaultValue: any;
+  metadata: Record<string, any>;
+} {
+  const { type, uniqueSchemaId, metadata } = extractFieldData(zodType);
 
   function getDefaultValue() {
     const def = zodType._def;
@@ -307,6 +317,7 @@ function getFieldInfo<
     isOptional: zodType.isOptional(),
     isNullable: zodType.isNullable(),
     defaultValue: getDefaultValue(),
+    metadata,
   };
 }
 
