@@ -10,6 +10,7 @@ import React, {
 import {
   DeepPartial,
   FormProvider,
+  Resolver,
   UseFormReturn,
   useForm,
 } from "react-hook-form";
@@ -41,7 +42,6 @@ import {
   RTFSupportedZodTypes,
   UnwrapEffects,
   UnwrapEffectsMetadata,
-  UnwrapEffectsValue,
   isZodTypeEqual,
 } from "./zod";
 import { getSchemaId } from "./zod/createFieldSchema";
@@ -210,18 +210,13 @@ export type RTFFormBaseProps<
   SchemaType extends z.AnyZodObject | ZodEffects<any, any>
 > = {
   /**
-   * A Zod Schema - An input field will be rendered for each property in the schema, based on the mapping passed to `createTsForm`
-   */
-  schema: SchemaType;
-
-  /**
    * A callback function that will be called with the data once the form has been submitted and validated successfully.
    */
   onSubmit: RTFFormSubmitFn<SchemaType>;
   /**
    * Initializes your form with default values. Is a deep partial, so all properties and nested properties are optional.
    */
-  defaultValues?: DeepPartial<z.infer<UnwrapEffectsValue<SchemaType>>>;
+  defaultValues?: DeepPartial<z.infer<SchemaType>>;
   /**
    * Use this if you need access to the `react-hook-form` useForm() in the component containing the form component (if you need access to any of its other properties.)
    * This will give you full control over you form state (in case you need check if it's dirty or reset it or anything.)
@@ -257,6 +252,10 @@ export type RTFFormHookProps<
   Mapping extends FormComponentMapping,
   SchemaType extends z.AnyZodObject | ZodEffects<any, any>
 > = RTFFormBaseProps<Mapping, SchemaType> & {
+  /**
+   * A Zod Schema - An input field will be rendered for each property in the schema, based on the mapping passed to `createTsForm`
+   */
+  schema: SchemaType | undefined;
   mapping: Mapping;
 };
 
@@ -266,6 +265,11 @@ export type RTFFormProps<
   SchemaType extends z.AnyZodObject | ZodEffects<any, any>,
   FormType extends FormComponent = "form"
 > = RTFFormBaseProps<CombineMappings<Mapping, InstanceMapping>, SchemaType> & {
+  /**
+   * A Zod Schema - An input field will be rendered for each property in the schema, based on the mapping passed to `createTsForm`
+   */
+  schema: SchemaType;
+
   /**
    * An array mapping zod schemas to components. This will be merged with the mapping passed to `createTsForm`.
    * All maps in this list will have priority over those in the second list.
@@ -453,10 +457,13 @@ export function useTsForm<
   if (!!useFormResultInitialValue.current !== !!form) {
     throw new Error(useFormResultValueChangedErrorMessage());
   }
-  const resolver = zodResolver(schema);
+  const resolver: Resolver<z.infer<SchemaType>> = schema
+    ? zodResolver(schema)
+    : async () => ({ values: {}, errors: {} });
+
   const _form = (() => {
     if (form) return form;
-    const uf = useForm({
+    const uf: UseFormReturn<z.infer<SchemaType>> = useForm({
       resolver,
       defaultValues,
     });
@@ -476,13 +483,15 @@ export function useTsForm<
   });
   const submitFn = handleSubmit(submitter.submit);
 
-  const renderedFields = renderFields({
-    form: _form,
-    combinedMapping: mapping,
-    schema,
-    fieldComponentProps,
-    submitter,
-  });
+  const renderedFields = schema
+    ? renderFields({
+        form: _form,
+        combinedMapping: mapping,
+        schema,
+        fieldComponentProps,
+        submitter,
+      })
+    : {};
   const renderedFieldNodes = flattenRenderedElements(renderedFields);
 
   return {

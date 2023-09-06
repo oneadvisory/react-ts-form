@@ -12,7 +12,6 @@ import {
   Prev,
   RTFSupportedZodTypes,
   UnwrapEffects,
-  UnwrapEffectsValue,
   getComponentForZodType,
   getMetaInformationForZodType,
   isZodArray,
@@ -70,7 +69,7 @@ interface RenderFieldsProps<
   Mapping extends FormComponentMapping,
   SchemaType extends RTFSupportedZodTypes
 > {
-  form: UseFormReturn<z.infer<UnwrapEffectsValue<SchemaType>>>;
+  form: UseFormReturn<z.infer<SchemaType>>;
   submitter: ReturnType<typeof useSubmitter>;
   combinedMapping: Mapping;
   schema: SchemaType;
