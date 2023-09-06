@@ -147,7 +147,7 @@ export function isZodArray(
 }
 
 export function isZodObject(
-  zodType: RTFSupportedZodTypes
+  zodType: RTFSupportedZodTypes | undefined
 ): zodType is AnyZodObject {
   return isTypeOf(zodType, "ZodObject");
 }
@@ -161,12 +161,17 @@ export function isZodDefaultDef(zodDef: unknown): zodDef is ZodDefaultDef {
   );
 }
 
-export function isZodDate(zodType: RTFSupportedZodTypes): zodType is ZodDate {
+export function isZodDate(
+  zodType: RTFSupportedZodTypes | undefined
+): zodType is ZodDate {
   return isTypeOf(zodType, "ZodDate");
 }
 
-export function isTypeOf(zodType: RTFSupportedZodTypes, type: ZodKindName) {
-  return zodType._def.typeName === ZodFirstPartyTypeKind[type];
+export function isTypeOf(
+  zodType: RTFSupportedZodTypes | undefined,
+  type: ZodKindName
+) {
+  return zodType?._def.typeName === ZodFirstPartyTypeKind[type];
 }
 
 type ZodKindName = keyof typeof z.ZodFirstPartyTypeKind;
