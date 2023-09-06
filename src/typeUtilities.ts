@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { RTFBaseZodType, UnwrapEffects } from "./zod";
 import { FormComponentMapping } from "./apiTypes";
+import { SetRequired } from "type-fest";
 
 /**
  * @internal
@@ -34,11 +35,6 @@ type KeysWithRequiredKeyList<T> = {
 /**
  * @internal
  */
-export type Require<T, K extends keyof T> = T & { [P in K]-?: T[P] };
-
-/**
- * @internal
- */
 export type Decrement<T extends number> = T extends T
   ? 0 extends T
     ? 0
@@ -67,7 +63,7 @@ export type Decrement<T extends number> = T extends T
  * @internal
  */
 export type RequireKeysWithRequiredChildren<T extends Record<string, any>> = T &
-  Require<T, KeysWithRequiredKeyList<T>>;
+  SetRequired<T, KeysWithRequiredKeyList<T>>;
 
 export type FlatType<T> = T extends object ? { [K in keyof T]: T[K] } : T;
 
