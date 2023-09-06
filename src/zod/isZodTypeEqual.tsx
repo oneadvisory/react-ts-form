@@ -123,25 +123,25 @@ export function isZodTypeEqual(
 // Guards
 
 export function isZodString(
-  zodType: RTFSupportedZodTypes
+  zodType: RTFSupportedZodTypes | undefined
 ): zodType is ZodString {
   return isTypeOf(zodType, "ZodString");
 }
 
 export function isZodNumber(
-  zodType: RTFSupportedZodTypes
+  zodType: RTFSupportedZodTypes | undefined
 ): zodType is ZodNumber {
   return isTypeOf(zodType, "ZodNumber");
 }
 
 export function isZodBoolean(
-  zodType: RTFSupportedZodTypes
+  zodType: RTFSupportedZodTypes | undefined
 ): zodType is ZodBoolean {
   return isTypeOf(zodType, "ZodBoolean");
 }
 
 export function isZodArray(
-  zodType: RTFSupportedZodTypes
+  zodType: RTFSupportedZodTypes | undefined
 ): zodType is ZodArray<any> {
   return isTypeOf(zodType, "ZodArray");
 }
