@@ -50,7 +50,7 @@ export type RTFSupportedZodTypes =
 export function isRTFSupportedZodType(
   type: ZodFirstPartySchemaTypes
 ): type is RTFSupportedZodTypes {
-  const typeName = type._def.typeName;
+  const typeName = type?._def.typeName;
   switch (typeName) {
     case ZodFirstPartyTypeKind.ZodNaN:
     case ZodFirstPartyTypeKind.ZodBigInt:
@@ -68,6 +68,7 @@ export function isRTFSupportedZodType(
     case ZodFirstPartyTypeKind.ZodCatch:
     case ZodFirstPartyTypeKind.ZodPromise:
     case ZodFirstPartyTypeKind.ZodPipeline:
+    case undefined:
       // Intentional fallthrough
       return false;
   }

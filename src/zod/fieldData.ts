@@ -22,7 +22,7 @@ export function extractFieldData<T extends ZodFirstPartySchemaTypes>(
 ): UnwrappedRTFSupportedZodTypes<UnwrapEffectsMetadata<T>> {
   if (!isRTFSupportedZodType(type)) {
     throw new Error(
-      `Unsupported zod type: ${type._def.typeName}. Please open an issue if you think this should be supported.`
+      `Unsupported zod type: ${type?._def.typeName}. Please open an issue if you think this should be supported.`
     );
   }
 
