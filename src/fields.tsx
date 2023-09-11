@@ -1,4 +1,4 @@
-import React, { Fragment, ReactElement } from "react";
+import React, { Fragment, ReactElement, ReactNode } from "react";
 import { UseFormReturn, useWatch } from "react-hook-form";
 import { AnyZodObject, ZodEffects, z } from "zod";
 import { FieldContextProvider, useContextProt } from "./FieldContext";
@@ -226,7 +226,7 @@ export function SchemaField(props: {
   props?: Record<string, any>;
 }): ReactElement {
   const parentContext = useContextProt("SchemaField");
-  const { control, submitter, mapping } = parentContext;
+  const { control, submitter, mapping, name: parentName } = parentContext;
 
   const name = props.name;
   const prefixedKey = parentContext.name + "." + name;
@@ -237,12 +237,26 @@ export function SchemaField(props: {
   const nameParts = name.split(".");
   nameParts.forEach((part) => {
     const unwrappedParent = unwrapEffects(schema);
-    if (!isZodObject(unwrappedParent)) {
-      throw new Error("SchemaField must be used within a ZodObject");
-    }
+    if (isZodArray(unwrappedParent)) {
+      if (Number.isNaN(parseFloat(part))) {
+        throw new Error(
+          `Invalid array index "${name}" in path "${parentName}": expected a number`
+        );
+      }
 
-    schema = unwrappedParent._def.shape()[part];
-    parentFieldComponentProps = parentFieldComponentProps?.[part];
+      schema = unwrappedParent.element;
+      parentFieldComponentProps = parentFieldComponentProps?.element;
+      return;
+    } else if (isZodObject(unwrappedParent)) {
+      schema = unwrappedParent._def.shape()[part];
+      parentFieldComponentProps = parentFieldComponentProps?.[part];
+    } else {
+      throw new Error(
+        "SchemaField must be used within a ZodObject or ZodArray: found " +
+          unwrappedParent._def.typeName +
+          " instead"
+      );
+    }
   });
 
   const currentValue = useWatch({
@@ -256,40 +270,7 @@ export function SchemaField(props: {
     ...props.props,
   };
 
-  const Component = getComponentForZodType(schema, mapping);
-  if (!Component) {
-    const unwrapped = unwrapEffects(schema);
-
-    if (isZodObject(unwrapped)) {
-      return (
-        <>
-          {Object.keys(unwrapped._def.shape()).map((key) => (
-            <SchemaField key={key} name={key} props={props.props?.[key]} />
-          ))}
-        </>
-      );
-    }
-    if (isZodArray(unwrapped)) {
-      const ret = ((currentValue as Array<any> | undefined | null) ?? []).map(
-        (_, index) => {
-          return (
-            <SchemaField
-              key={index}
-              name={index.toString()}
-              props={fieldComponentProps}
-            />
-          );
-        }
-      );
-      return <>{ret}</>;
-    }
-    throw new Error(
-      noMatchingSchemaErrorMessage(
-        prefixedKey.toString(),
-        unwrapped._def.typeName
-      )
-    );
-  }
+  const unwrapped = unwrapEffects(schema);
   const meta = getMetaInformationForZodType(schema);
 
   const { beforeElement, afterElement } = fieldComponentProps ?? {};
@@ -305,6 +286,36 @@ export function SchemaField(props: {
   const ctxLabel = meta.description?.label;
   const ctxPlaceholder = meta.description?.placeholder;
 
+  let content: ReactNode | null = null;
+
+  const Component = getComponentForZodType(schema, mapping);
+  if (Component) {
+    content = <Component key={prefixedKey} {...mergedProps} />;
+  } else if (isZodObject(unwrapped)) {
+    content = Object.keys(unwrapped._def.shape()).map((key) => (
+      <SchemaField key={key} name={key} props={props.props?.[key]} />
+    ));
+  } else if (isZodArray(unwrapped)) {
+    content = ((currentValue as Array<any> | undefined | null) ?? []).map(
+      (_, index) => {
+        return (
+          <SchemaField
+            key={index}
+            name={index.toString()}
+            props={fieldComponentProps}
+          />
+        );
+      }
+    );
+  } else {
+    throw new Error(
+      noMatchingSchemaErrorMessage(
+        prefixedKey.toString(),
+        unwrapped._def.typeName
+      )
+    );
+  }
+
   return (
     <Fragment key={prefixedKey}>
       {beforeElement}
@@ -319,7 +330,7 @@ export function SchemaField(props: {
         submitter={submitter}
         mapping={mapping}
       >
-        <Component key={prefixedKey} {...mergedProps} />
+        {content}
       </FieldContextProvider>
       {afterElement}
     </Fragment>
