@@ -1,6 +1,6 @@
 {
   "name": "@oneadvisory/ts-react-form",
-  "version": "4.2.2",
+  "version": "4.2.3",
   "description": "Build forms faster!",
   "module": "lib/index.mjs",
   "main": "lib/index.cjs",
