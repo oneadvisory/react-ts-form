@@ -17,3 +17,5 @@ export {
 
 export * from "./apiTypes";
 export * from "./zod";
+
+export { errorFromRhfErrorObject } from "./zodObjectErrors";
